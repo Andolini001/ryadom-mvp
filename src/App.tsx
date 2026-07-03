@@ -93,6 +93,8 @@ const backendModeLabels: Record<BackendMode, string> = {
   error: 'Fallback',
 }
 
+const stateWordLimit = 8
+
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
@@ -171,7 +173,7 @@ function App() {
   const wordCount = stateText.trim().split(/\s+/).filter(Boolean).length
   const canMatch =
     wordCount >= 1 &&
-    wordCount <= 3 &&
+    wordCount <= stateWordLimit &&
     thought.trim().length >= 18 &&
     signal.safetyLevel !== 'blocked' &&
     signal.safetyLevel !== 'crisis'
@@ -552,15 +554,15 @@ function App() {
 
             <div className="checkin-panel">
               <label className="field">
-                <span>Состояние и мысли в двух словах</span>
+                <span>Состояние и мысли короткой фразой</span>
                 <input
                   value={stateText}
-                  maxLength={32}
+                  maxLength={72}
                   onChange={(event) => setStateText(event.target.value)}
-                  placeholder="например: тихая усталость"
+                  placeholder="например: устал, но хочу поговорить"
                 />
-                <small className={wordCount > 3 ? 'field-error' : ''}>
-                  {wordCount || 0}/3 слова. Лучше коротко и честно.
+                <small className={wordCount > stateWordLimit ? 'field-error' : ''}>
+                  {wordCount || 0}/{stateWordLimit} слов. Лучше коротко и честно.
                 </small>
               </label>
 
