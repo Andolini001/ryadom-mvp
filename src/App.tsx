@@ -3,14 +3,24 @@ import {
   Ban,
   Bell,
   Clock3,
+  Flame,
+  Gem,
   HeartHandshake,
+  Home,
   Lock,
+  Map,
   MessageCircle,
   Radio,
+  Rocket,
   Send,
+  Shield,
   ShieldCheck,
   Sparkles,
+  Star,
+  Target,
+  Trophy,
   UserRoundCheck,
+  Users,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
@@ -20,8 +30,6 @@ import {
   intentDescriptions,
   intentLabels,
 } from './data'
-import { buildMoodSignal, findMatches } from './matching'
-import { isSupabaseConfigured } from './lib/supabase'
 import {
   createProductionReport,
   createRoomFromSignal,
@@ -32,14 +40,16 @@ import {
   sendProductionMessage,
   subscribeToRoomMessages,
 } from './lib/productionBackend'
+import { isSupabaseConfigured } from './lib/supabase'
+import { buildMoodSignal, findMatches } from './matching'
 import type { FormEvent } from 'react'
 import type {
   Intent,
+  MatchCandidate,
   Message,
   Report,
   Room,
   SafetyEvent,
-  SafetyLevel,
   UserFeedback,
 } from './types'
 
@@ -53,7 +63,7 @@ const intentIcons: Record<Intent, typeof MessageCircle> = {
 const anonymousSelf = {
   id: 'u-self',
   alias: 'вы',
-  hue: '#11100f',
+  hue: '#68e0c2',
   lastSeen: 'сейчас',
   trustScore: 100,
 }
@@ -62,13 +72,6 @@ const defaultThought =
   'Вроде все нормально, но я устал держаться бодро. Хочу поговорить с теми, кто сейчас примерно там же.'
 
 type BackendMode = 'demo' | 'connecting' | 'live' | 'error'
-
-const safetyLevelLabels: Record<SafetyLevel, string> = {
-  clear: 'низкий',
-  sensitive: 'чувствительно',
-  blocked: 'стоп',
-  crisis: 'кризис',
-}
 
 const eventStatusLabels: Record<SafetyEvent['status'], string> = {
   new: 'новое',
@@ -88,6 +91,14 @@ const backendModeLabels: Record<BackendMode, string> = {
   live: 'Живой backend',
   error: 'Fallback',
 }
+
+const navItems = [
+  { href: '#check-in', label: 'Главная', icon: Home },
+  { href: '#room', label: 'Комната', icon: MessageCircle, count: '3' },
+  { href: '#signals', label: 'Карта сигналов', icon: Map },
+  { href: '#launch', label: 'Миссии', icon: Target, count: '2' },
+  { href: '#safety', label: 'Защита', icon: Shield },
+]
 
 const buildRoom = (
   state: string,
@@ -162,6 +173,11 @@ function App() {
     thought.trim().length >= 18 &&
     signal.safetyLevel !== 'blocked' &&
     signal.safetyLevel !== 'crisis'
+  const roomCode = room.id.match(/\d+/g)?.join('').slice(-3) || '348'
+  const onlineSignals = 118 + localMatches.length * 7 + reports.length
+  const activeRooms = matches.slice(0, 4)
+  const roomMessages = room.messages.slice(-4)
+  const progressCount = Math.min(5, Math.max(1, room.messages.filter((item) => item.tone !== 'system').length))
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -271,6 +287,14 @@ function App() {
     setLiveMatches(null)
     setHasMatched(true)
     setIsMatching(false)
+  }
+
+  const openDemoRoom = (match: MatchCandidate) => {
+    const focusedMatches = [match, ...matches.filter((item) => item.id !== match.id)].slice(0, 4)
+    setRoom(buildRoom(match.state, focusedMatches))
+    setActiveRoomId(null)
+    setLiveMatches(null)
+    setHasMatched(true)
   }
 
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -408,170 +432,220 @@ function App() {
 
   return (
     <main className="app-shell">
-      <header className="topbar" aria-label="Главная навигация">
+      <div className="world-backdrop" aria-hidden="true" />
+
+      <aside className="game-rail" aria-label="Игровая навигация">
         <a className="brand" href="#check-in" aria-label="Рядом">
           <span className="brand-mark">Р</span>
           <span>Рядом</span>
         </a>
-        <nav className="topnav">
-          <a href="#room">Комната</a>
-          <a href="#safety">Защита</a>
-          <a href="#launch">Запуск</a>
-        </nav>
-        <a className="top-action" href="#waitlist">
-          <Bell size={17} aria-hidden="true" />
-          Ранний доступ
-        </a>
-      </header>
 
-      <div className={`backend-strip ${backendMode}`} role="status" aria-live="polite">
-        <strong>{backendModeLabels[backendMode]}</strong>
-        <span>{backendNotice}</span>
-      </div>
-
-      <section className="product-grid" id="check-in">
-        <div className="checkin-panel">
-          <div className="section-title">
-            <div>
-              <p className="overline">18+ · анонимно · не терапия</p>
-              <h1>Что сейчас внутри?</h1>
-            </div>
-            <ShieldCheck size={28} aria-hidden="true" />
+        <div className="level-card">
+          <div>
+            <Star size={18} aria-hidden="true" />
+            <strong>Lv. 7</strong>
           </div>
-
-          <label className="field">
-            <span>Состояние в 2 словах</span>
-            <input
-              value={stateText}
-              maxLength={32}
-              onChange={(event) => setStateText(event.target.value)}
-              placeholder="например: тихая усталость"
-            />
-            <small className={wordCount > 3 ? 'field-error' : ''}>
-              {wordCount || 0}/3 слова. Лучше коротко и честно.
-            </small>
-          </label>
-
-          <label className="field">
-            <span>Мысль, которую хочется положить рядом</span>
-            <textarea
-              value={thought}
-              maxLength={420}
-              onChange={(event) => setThought(event.target.value)}
-              placeholder="Опиши, что крутится в голове."
-            />
-            <small>{thought.length}/420 · исходный текст можно удалить после комнаты.</small>
-          </label>
-
-          <div className="intent-grid" aria-label="Выбор намерения">
-            {(Object.keys(intentLabels) as Intent[]).map((item) => {
-              const Icon = intentIcons[item]
-
-              return (
-                <button
-                  className={intent === item ? 'intent active' : 'intent'}
-                  key={item}
-                  type="button"
-                  onClick={() => setIntent(item)}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{intentLabels[item]}</span>
-                  <small>{intentDescriptions[item]}</small>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className={`safety-note ${signal.safetyLevel}`}>
-            <AlertTriangle size={18} aria-hidden="true" />
-            <span>{safetyCopy}</span>
-          </div>
-
-          <button
-            className="primary-cta"
-            type="button"
-            onClick={handleMatch}
-            disabled={!canMatch || isMatching}
-          >
-            <Radio size={19} aria-hidden="true" />
-            {isMatching ? 'Создаем комнату...' : 'Найти своих'}
-          </button>
+          <span>780 / 1200 XP</span>
+          <i />
         </div>
 
-        <aside className="match-panel" aria-label="Подбор комнаты">
-          <div className="panel-heading">
-            <div>
-              <p className="overline">подбор сейчас</p>
-              <h2>{hasMatched ? 'Комната готова' : 'Кандидаты рядом'}</h2>
-            </div>
-            <span className="match-speed">&lt; 90 сек</span>
+        <nav className="side-nav">
+          {navItems.map((item) => {
+            const Icon = item.icon
+
+            return (
+              <a href={item.href} key={item.href}>
+                <Icon size={18} aria-hidden="true" />
+                <span>{item.label}</span>
+                {item.count && <em>{item.count}</em>}
+              </a>
+            )
+          })}
+        </nav>
+
+        <div className="mission-card">
+          <div>
+            <strong>Ежедневная миссия</strong>
+            <button type="button" aria-label="Скрыть миссию">
+              ×
+            </button>
+          </div>
+          <p>Проведи 1 комнату</p>
+          <span className="mission-progress">
+            <i style={{ width: hasMatched ? '100%' : '18%' }} />
+          </span>
+          <small>{hasMatched ? '1 / 1' : '0 / 1'} · +60 XP</small>
+        </div>
+
+        <div className="streak-card">
+          <strong>Серия чек-инов</strong>
+          <p>5 дней подряд</p>
+          <div>
+            {['Пн', 'Вт', 'Ср', 'Чт', 'Сб', 'Вс'].map((day, index) => (
+              <span className={index < 5 ? 'done' : ''} key={day}>
+                {day}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <a className="rail-help" href="#safety">
+          <ShieldCheck size={24} aria-hidden="true" />
+          <span>
+            <strong>Ты не один</strong>
+            Если сейчас тяжело, мы рядом.
+          </span>
+        </a>
+      </aside>
+
+      <section className="game-board">
+        <header className="game-topbar">
+          <div className={`backend-strip ${backendMode}`} role="status" aria-live="polite">
+            <strong>{backendModeLabels[backendMode]}</strong>
+            <span>{backendNotice}</span>
           </div>
 
-          <div className="signal-map">
-            <div>
-              <span>язык</span>
-              <strong>RU</strong>
-            </div>
-            <div>
-              <span>возраст</span>
-              <strong>18-30</strong>
-            </div>
-            <div>
-              <span>темы</span>
-              <strong>{signal.topics.length || 'ищем'}</strong>
-            </div>
-            <div>
-              <span>риск</span>
-              <strong>{safetyLevelLabels[signal.safetyLevel]}</strong>
-            </div>
+          <div className="resource-strip" aria-label="Ресурсы">
+            <span>
+              <Gem size={16} aria-hidden="true" />
+              210
+            </span>
+            <span>
+              <Flame size={16} aria-hidden="true" />
+              3
+            </span>
+            <a href="#waitlist" aria-label="Ранний доступ">
+              <Bell size={17} aria-hidden="true" />
+            </a>
           </div>
+        </header>
 
-          <div className="topic-row">
-            {(signal.topics.length ? signal.topics : ['усталость', 'тишина', 'поддержка']).map(
-              (topic) => (
-                <span key={topic}>{topic}</span>
-              ),
-            )}
-          </div>
+        <section className="hero-grid" id="check-in">
+          <div className="signal-stage">
+            <div className="stage-copy">
+              <p className="quest-label">Чек-ин за 30 секунд</p>
+              <h1>Что сейчас внутри?</h1>
+              <p className="stage-subcopy">
+                Напиши короткий сигнал. Карта найдет людей с похожим контекстом и откроет
+                спокойную комнату.
+              </p>
+            </div>
 
-          <div className="match-list">
-            {matches.length ? (
-              matches.map((match) => (
-                <article className="match-row" key={match.id}>
-                  <span className="avatar" style={{ background: match.user.hue }}>
-                    {match.user.alias.slice(0, 1).toLocaleUpperCase('ru-RU')}
-                  </span>
-                  <div>
-                    <div className="row-title">
-                      <strong>{match.user.alias}</strong>
-                      <span>{match.score}%</span>
-                    </div>
-                    <p>{match.state}</p>
-                    <small>{match.reasons.join(' · ')}</small>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="empty-state">
-                <Ban size={22} aria-hidden="true" />
-                <p>Матчинг остановлен до проверки сигнала защиты.</p>
+            <div className="checkin-panel">
+              <label className="field">
+                <span>Состояние в 2 словах</span>
+                <input
+                  value={stateText}
+                  maxLength={32}
+                  onChange={(event) => setStateText(event.target.value)}
+                  placeholder="например: тихая усталость"
+                />
+                <small className={wordCount > 3 ? 'field-error' : ''}>
+                  {wordCount || 0}/3 слова. Лучше коротко и честно.
+                </small>
+              </label>
+
+              <label className="field">
+                <span>Короткая мысль</span>
+                <textarea
+                  value={thought}
+                  maxLength={420}
+                  onChange={(event) => setThought(event.target.value)}
+                  placeholder="Опиши, что крутится в голове."
+                />
+                <small>{thought.length}/420 · исходный текст можно удалить после комнаты.</small>
+              </label>
+
+              <div className="intent-grid" aria-label="Выбор намерения">
+                {(Object.keys(intentLabels) as Intent[]).map((item) => {
+                  const Icon = intentIcons[item]
+
+                  return (
+                    <button
+                      className={intent === item ? 'intent active' : 'intent'}
+                      key={item}
+                      type="button"
+                      onClick={() => setIntent(item)}
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                      <span>{intentLabels[item]}</span>
+                      <small>{intentDescriptions[item]}</small>
+                    </button>
+                  )
+                })}
               </div>
-            )}
-          </div>
-        </aside>
-      </section>
 
-      <section className="room-band" id="room">
-        <div className="room-shell">
-          <div className="room-main">
+              <button
+                className="primary-cta"
+                type="button"
+                onClick={handleMatch}
+                disabled={!canMatch || isMatching}
+              >
+                <Radio size={19} aria-hidden="true" />
+                {isMatching ? 'Создаем комнату...' : 'Найти своих'}
+              </button>
+
+              <div className={`safety-note ${signal.safetyLevel}`}>
+                <AlertTriangle size={18} aria-hidden="true" />
+                <span>{safetyCopy}</span>
+              </div>
+            </div>
+
+            <div className="signal-world" id="signals" aria-label="Карта сигналов рядом">
+              <div className="signal-world-head">
+                <span>
+                  <i />
+                  Сигналов рядом: {onlineSignals}
+                </span>
+                <small>обновляется каждые 15 секунд</small>
+              </div>
+
+              <div className="signal-map-art" aria-hidden="true">
+                {matches.slice(0, 5).map((match, index) => (
+                  <span
+                    className={`signal-node node-${index}`}
+                    key={match.id}
+                    style={{
+                      borderColor: match.user.hue,
+                      boxShadow: `0 0 42px ${match.user.hue}66`,
+                    }}
+                  >
+                    <b style={{ background: match.user.hue }}>
+                      {match.user.alias.slice(0, 1).toLocaleUpperCase('ru-RU')}
+                    </b>
+                    <em>{match.state}</em>
+                    <small>{match.score}</small>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <aside className="room-console" id="room" aria-label="Активная комната">
             <div className="panel-heading">
               <div>
-                <p className="overline">малая комната · 3-5 человек</p>
-                <h2>{room.title}</h2>
+                <p className="overline">Комната #{roomCode}</p>
+                <h2>{hasMatched ? 'Комната активна' : 'Комната ждет сигнал'}</h2>
               </div>
-              <div className="timer">
-                <Clock3 size={18} aria-hidden="true" />
+              <span className="live-pill">Live</span>
+            </div>
+
+            <div className="room-meta">
+              <span>
+                <Users size={16} aria-hidden="true" />
+                {room.members.length} / 5
+              </span>
+              <span>
+                <Clock3 size={16} aria-hidden="true" />
                 {room.timerMinutes}:00
+              </span>
+            </div>
+
+            <div className="room-state">
+              <Star size={18} aria-hidden="true" />
+              <div>
+                <strong>{room.title}</strong>
+                <span>{hasMatched ? 'сессия открыта' : 'найди своих, чтобы войти'}</span>
               </div>
             </div>
 
@@ -587,7 +661,7 @@ function App() {
             </div>
 
             <div className="chat-window" aria-live="polite">
-              {room.messages.map((item) => (
+              {roomMessages.map((item) => (
                 <article className={`chat-message ${item.tone}`} key={item.id}>
                   <div>
                     <strong>{item.author}</strong>
@@ -602,162 +676,179 @@ function App() {
               <input
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Написать спокойно, без давления..."
+                placeholder="Напиши сообщение..."
                 aria-label="Сообщение в комнату"
               />
               <button type="submit" disabled={isSending}>
                 <Send size={17} aria-hidden="true" />
-                {isSending ? 'Отправляем...' : 'Отправить'}
               </button>
             </form>
-          </div>
 
-          <aside className="room-tools">
-            <div className="tool-block">
-              <h3>Быстрая защита</h3>
+            <div className="room-actions">
               <button type="button" onClick={() => addReport('Пожаловаться на сообщение')}>
-                <AlertTriangle size={17} aria-hidden="true" />
+                <AlertTriangle size={16} aria-hidden="true" />
                 Пожаловаться
               </button>
               <button type="button" onClick={() => addReport('Заблокировать участника')}>
-                <Ban size={17} aria-hidden="true" />
-                Заблокировать
+                <Ban size={16} aria-hidden="true" />
+                Блок
               </button>
-              <p>Репорт скрывает участника локально и отправляет событие в очередь.</p>
-            </div>
-
-            <div className="tool-block">
-              <h3>После комнаты</h3>
-              <div className="feedback-row">
-                {[
-                  ['lighter', 'легче'],
-                  ['same', 'так же'],
-                  ['worse', 'хуже'],
-                ].map(([value, label]) => (
-                  <button
-                    className={feedback.moodAfter === value ? 'selected' : ''}
-                    key={value}
-                    type="button"
-                    onClick={() =>
-                      updateFeedback({
-                        ...feedback,
-                        moodAfter: value as UserFeedback['moodAfter'],
-                      })
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={feedback.note}
-                onChange={(event) =>
-                  setFeedback((current) => ({ ...current, note: event.target.value }))
-                }
-                onBlur={() => updateFeedback(feedback)}
-                placeholder="Что улучшить в подборе?"
-              />
             </div>
           </aside>
-        </div>
-      </section>
+        </section>
 
-      <section className="ops-grid" id="safety">
-        <div className="ops-panel">
-          <div className="panel-heading">
-            <div>
-              <p className="overline">очередь защиты</p>
-              <h2>Очередь модерации</h2>
-            </div>
-            <Lock size={20} aria-hidden="true" />
+        <section className="room-strip" aria-label="Активные комнаты">
+          <div className="strip-head">
+            <h2>Активные комнаты</h2>
+            <a href="#room">смотреть все</a>
           </div>
-          <div className="safety-table">
-            {safetyEvents.slice(0, 5).map((event) => (
-              <article className="safety-row" key={event.id}>
-                <span className={`severity ${event.severity}`}>
-                  {severityLabels[event.severity]}
+
+          <div className="room-cards">
+            {activeRooms.map((match, index) => (
+              <article className={index === 1 || hasMatched ? 'room-card active' : 'room-card'} key={match.id}>
+                <span className="avatar" style={{ background: match.user.hue }}>
+                  {match.user.alias.slice(0, 1).toLocaleUpperCase('ru-RU')}
                 </span>
                 <div>
-                  <strong>{event.label}</strong>
-                  <p>{event.detail}</p>
+                  <strong>#{117 + index * 104} {match.state}</strong>
+                  <p>{match.thought}</p>
+                  <small>{Math.min(5, 2 + index)} / 5 · {match.minutesAgo} мин назад</small>
                 </div>
-                <span>{eventStatusLabels[event.status]}</span>
+                <button type="button" onClick={() => openDemoRoom(match)}>
+                  Войти
+                </button>
               </article>
             ))}
           </div>
-        </div>
-
-        <div className="ops-panel" id="launch">
-          <div className="panel-heading">
-            <div>
-              <p className="overline">проверка спроса</p>
-              <h2>Ручной MVP</h2>
-            </div>
-          </div>
-          <div className="metric-grid">
-            <div>
-              <span>цель</span>
-              <strong>1000</strong>
-              <p>первых чек-инов</p>
-            </div>
-            <div>
-              <span>активация</span>
-              <strong>35%</strong>
-              <p>дошли до комнаты</p>
-            </div>
-            <div>
-              <span>качество</span>
-              <strong>65%</strong>
-              <p>стало легче или интересно</p>
-            </div>
-            <div>
-              <span>риск</span>
-              <strong>&lt;3</strong>
-              <p>жалобы на 100 чатов</p>
-            </div>
-          </div>
-          <ol className="launch-list">
-            <li>Неделя 1: Telegram-очередь и три рекламных угла.</li>
-            <li>Неделя 2: ручной подбор комнат и измерение качества.</li>
-            <li>Недели 3-8: живой чат, отчеты, панель, PWA.</li>
-          </ol>
-        </div>
-      </section>
-
-      <section className="waitlist-band" id="waitlist">
-        <div>
-          <p className="overline">старт через Telegram</p>
-          <h2>Первая волна без ленты и лайков</h2>
-          <p>
-            MVP собирает людей через Telegram, проверяет качество матчинга и только потом
-            масштабирует комнаты.
-          </p>
-        </div>
-        <form className="waitlist-form" onSubmit={joinWaitlist}>
-          <input
-            value={telegramHandle}
-            onChange={(event) => setTelegramHandle(event.target.value)}
-            placeholder="@username"
-            aria-label="Telegram username"
-          />
-          <button type="submit">
-            <Bell size={17} aria-hidden="true" />
-            В ранний доступ
-          </button>
-          {waitlistStatus && <small>{waitlistStatus}</small>}
-        </form>
-      </section>
-
-      {reports.length > 0 && (
-        <section className="report-log" aria-label="Журнал репортов">
-          <strong>Журнал безопасности:</strong>
-          {reports.map((report) => (
-            <span key={report.id}>
-              {report.createdAt} · {report.reason}
-            </span>
-          ))}
         </section>
-      )}
+
+        <section className="ops-grid" id="safety">
+          <div className="ops-panel">
+            <div className="panel-heading">
+              <div>
+                <p className="overline">Очередь защиты</p>
+                <h2>Модерация</h2>
+              </div>
+              <Lock size={20} aria-hidden="true" />
+            </div>
+            <div className="safety-table">
+              {safetyEvents.slice(0, 5).map((event) => (
+                <article className="safety-row" key={event.id}>
+                  <span className={`severity ${event.severity}`}>
+                    {severityLabels[event.severity]}
+                  </span>
+                  <div>
+                    <strong>{event.label}</strong>
+                    <p>{event.detail}</p>
+                  </div>
+                  <span>{eventStatusLabels[event.status]}</span>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="ops-panel" id="launch">
+            <div className="panel-heading">
+              <div>
+                <p className="overline">Сезон запуска</p>
+                <h2>Прогресс сегодня</h2>
+              </div>
+              <Trophy size={22} aria-hidden="true" />
+            </div>
+
+            <div className="progress-card">
+              <div>
+                <strong>{progressCount} / 5 комнат</strong>
+                <span>следующая награда: +100 XP</span>
+              </div>
+              <div className="progress-dots">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <i className={index < progressCount ? 'filled' : ''} key={index} />
+                ))}
+              </div>
+            </div>
+
+            <div className="feedback-row">
+              {[
+                ['lighter', 'легче'],
+                ['same', 'так же'],
+                ['worse', 'хуже'],
+              ].map(([value, label]) => (
+                <button
+                  className={feedback.moodAfter === value ? 'selected' : ''}
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    updateFeedback({
+                      ...feedback,
+                      moodAfter: value as UserFeedback['moodAfter'],
+                    })
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={feedback.note}
+              onChange={(event) =>
+                setFeedback((current) => ({ ...current, note: event.target.value }))
+              }
+              onBlur={() => updateFeedback(feedback)}
+              placeholder="Что улучшить в подборе?"
+            />
+          </div>
+        </section>
+
+        <section className="waitlist-band" id="waitlist">
+          <div>
+            <p className="overline">Первая волна</p>
+            <h2>Игровые комнаты без ленты и лайков</h2>
+            <p>
+              Подключаем первых пользователей через Telegram, смотрим качество матчей и
+              открываем сезон постепенно.
+            </p>
+          </div>
+          <form className="waitlist-form" onSubmit={joinWaitlist}>
+            <input
+              value={telegramHandle}
+              onChange={(event) => setTelegramHandle(event.target.value)}
+              placeholder="@username"
+              aria-label="Telegram username"
+            />
+            <button type="submit">
+              <Rocket size={17} aria-hidden="true" />
+              В ранний доступ
+            </button>
+            {waitlistStatus && <small>{waitlistStatus}</small>}
+          </form>
+        </section>
+
+        {reports.length > 0 && (
+          <section className="report-log" aria-label="Журнал репортов">
+            <strong>Журнал безопасности:</strong>
+            {reports.map((report) => (
+              <span key={report.id}>
+                {report.createdAt} · {report.reason}
+              </span>
+            ))}
+          </section>
+        )}
+      </section>
+
+      <nav className="mobile-nav" aria-label="Мобильная навигация">
+        {navItems.slice(0, 5).map((item) => {
+          const Icon = item.icon
+
+          return (
+            <a href={item.href} key={item.href}>
+              <Icon size={18} aria-hidden="true" />
+              <span>{item.label}</span>
+            </a>
+          )
+        })}
+      </nav>
     </main>
   )
 }
