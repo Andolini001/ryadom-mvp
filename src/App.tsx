@@ -251,6 +251,7 @@ function App() {
       }
       setSafetyEvents((items) => [event, ...items])
       setHasMatched(false)
+      setActiveTab('safety')
       return
     }
 
@@ -261,6 +262,7 @@ function App() {
         const result = await createRoomFromSignal(signal)
         if (result.safetyBlocked) {
           setHasMatched(false)
+          setActiveTab('safety')
           setBackendNotice('Чек-ин отправлен в очередь защиты и не попал в обычный матчинг.')
           return
         }
@@ -270,6 +272,7 @@ function App() {
           setActiveRoomId(result.room.id)
           setLiveMatches(result.candidates)
           setHasMatched(true)
+          setActiveTab('room')
           setBackendNotice('Комната создана в Supabase. Сообщения идут через realtime.')
           return
         }
@@ -290,6 +293,7 @@ function App() {
     setActiveRoomId(null)
     setLiveMatches(null)
     setHasMatched(true)
+    setActiveTab('room')
     setIsMatching(false)
   }
 
@@ -299,6 +303,7 @@ function App() {
     setActiveRoomId(null)
     setLiveMatches(null)
     setHasMatched(true)
+    setActiveTab('room')
   }
 
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -547,7 +552,7 @@ function App() {
 
             <div className="checkin-panel">
               <label className="field">
-                <span>Состояние в 2 словах</span>
+                <span>Состояние и мысли в двух словах</span>
                 <input
                   value={stateText}
                   maxLength={32}
