@@ -12,7 +12,7 @@ import {
   Sparkles,
   UserRoundCheck,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import {
   initialRoom,
@@ -21,6 +21,17 @@ import {
   intentLabels,
 } from './data'
 import { buildMoodSignal, findMatches } from './matching'
+import { isSupabaseConfigured } from './lib/supabase'
+import {
+  createProductionReport,
+  createRoomFromSignal,
+  ensureProductionSession,
+  joinProductionWaitlist,
+  loadProductionSafetyEvents,
+  saveProductionFeedback,
+  sendProductionMessage,
+  subscribeToRoomMessages,
+} from './lib/productionBackend'
 import type { FormEvent } from 'react'
 import type {
   Intent,
@@ -50,6 +61,8 @@ const anonymousSelf = {
 const defaultThought =
   'Вроде все нормально, но я устал держаться бодро. Хочу поговорить с теми, кто сейчас примерно там же.'
 
+type BackendMode = 'demo' | 'connecting' | 'live' | 'error'
+
 const safetyLevelLabels: Record<SafetyLevel, string> = {
   clear: 'низкий',
   sensitive: 'чувствительно',
@@ -67,6 +80,13 @@ const severityLabels: Record<SafetyEvent['severity'], string> = {
   low: 'низкий',
   medium: 'средний',
   high: 'высокий',
+}
+
+const backendModeLabels: Record<BackendMode, string> = {
+  demo: 'Демо-режим',
+  connecting: 'Подключение',
+  live: 'Живой backend',
+  error: 'Fallback',
 }
 
 const buildRoom = (
@@ -116,12 +136,25 @@ function App() {
   const [feedback, setFeedback] = useState<UserFeedback>({ moodAfter: null, note: '' })
   const [telegramHandle, setTelegramHandle] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState('')
+  const [backendMode, setBackendMode] = useState<BackendMode>(
+    isSupabaseConfigured ? 'connecting' : 'demo',
+  )
+  const [backendNotice, setBackendNotice] = useState(
+    isSupabaseConfigured
+      ? 'Подключаем анонимную Supabase-сессию.'
+      : 'Demo mode: добавь Supabase env, чтобы включить живые комнаты.',
+  )
+  const [liveMatches, setLiveMatches] = useState<ReturnType<typeof findMatches> | null>(null)
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
+  const [isMatching, setIsMatching] = useState(false)
+  const [isSending, setIsSending] = useState(false)
 
   const signal = useMemo(
     () => buildMoodSignal(stateText, thought, intent),
     [stateText, thought, intent],
   )
-  const matches = useMemo(() => findMatches(signal), [signal])
+  const localMatches = useMemo(() => findMatches(signal), [signal])
+  const matches = liveMatches ?? localMatches
   const wordCount = stateText.trim().split(/\s+/).filter(Boolean).length
   const canMatch =
     wordCount >= 1 &&
@@ -129,6 +162,52 @@ function App() {
     thought.trim().length >= 18 &&
     signal.safetyLevel !== 'blocked' &&
     signal.safetyLevel !== 'crisis'
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+
+    let cancelled = false
+
+    ensureProductionSession()
+      .then(() => loadProductionSafetyEvents())
+      .then((events) => {
+        if (cancelled) return
+        setBackendMode('live')
+        setBackendNotice('Живой backend подключен: анонимная сессия, RLS и realtime готовы.')
+        if (events.length > 0) {
+          setSafetyEvents(events)
+        }
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setBackendMode('error')
+        setBackendNotice(
+          error instanceof Error
+            ? `Supabase недоступен: ${error.message}. Работаем в demo mode.`
+            : 'Supabase недоступен. Работаем в demo mode.',
+        )
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (backendMode !== 'live' || !activeRoomId) return
+
+    return subscribeToRoomMessages(activeRoomId, (nextMessage) => {
+      setRoom((current) => {
+        if (current.id !== activeRoomId) return current
+        if (current.messages.some((item) => item.id === nextMessage.id)) return current
+
+        return {
+          ...current,
+          messages: [...current.messages, nextMessage],
+        }
+      })
+    })
+  }, [activeRoomId, backendMode])
 
   const safetyCopy = {
     clear: 'Можно матчить: язык RU, 18-30, риск низкий, исходный текст хранится минимально.',
@@ -138,7 +217,9 @@ function App() {
       'Этот чек-ин не отправляется в обычный чат. Если есть риск прямо сейчас, обратись в местную экстренную службу или к человеку рядом.',
   }[signal.safetyLevel]
 
-  const handleMatch = () => {
+  const handleMatch = async () => {
+    if (isMatching) return
+
     if (signal.safetyLevel === 'crisis' || signal.safetyLevel === 'blocked') {
       const event: SafetyEvent = {
         id: `s-${Date.now()}`,
@@ -153,18 +234,80 @@ function App() {
       return
     }
 
-    setRoom(buildRoom(signal.state, matches))
+    setIsMatching(true)
+
+    if (backendMode === 'live') {
+      try {
+        const result = await createRoomFromSignal(signal)
+        if (result.safetyBlocked) {
+          setHasMatched(false)
+          setBackendNotice('Чек-ин отправлен в очередь защиты и не попал в обычный матчинг.')
+          return
+        }
+
+        if (result.room) {
+          setRoom(result.room)
+          setActiveRoomId(result.room.id)
+          setLiveMatches(result.candidates)
+          setHasMatched(true)
+          setBackendNotice('Комната создана в Supabase. Сообщения идут через realtime.')
+          return
+        }
+      } catch (error: unknown) {
+        setBackendMode('error')
+        setBackendNotice(
+          error instanceof Error
+            ? `Supabase ошибка: ${error.message}. Переключились на demo mode.`
+            : 'Supabase ошибка. Переключились на demo mode.',
+        )
+      } finally {
+        setIsMatching(false)
+      }
+    }
+
+    const fallbackMatches = localMatches
+    setRoom(buildRoom(signal.state, fallbackMatches))
+    setActiveRoomId(null)
+    setLiveMatches(null)
     setHasMatched(true)
+    setIsMatching(false)
   }
 
-  const sendMessage = (event: FormEvent<HTMLFormElement>) => {
+  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!message.trim()) return
+    if (!message.trim() || isSending) return
+
+    const body = message.trim()
+
+    if (backendMode === 'live' && activeRoomId) {
+      setIsSending(true)
+      try {
+        const savedMessage = await sendProductionMessage(activeRoomId, body)
+        setRoom((current) => {
+          if (current.messages.some((item) => item.id === savedMessage.id)) return current
+
+          return {
+            ...current,
+            messages: [...current.messages, savedMessage],
+          }
+        })
+        setMessage('')
+        return
+      } catch (error: unknown) {
+        setBackendNotice(
+          error instanceof Error
+            ? `Не удалось отправить в Supabase: ${error.message}. Сообщение оставлено локально.`
+            : 'Не удалось отправить в Supabase. Сообщение оставлено локально.',
+        )
+      } finally {
+        setIsSending(false)
+      }
+    }
 
     const nextMessage: Message = {
       id: `m-${Date.now()}`,
       author: 'вы',
-      body: message.trim(),
+      body,
       time: 'сейчас',
       tone: 'warm',
     }
@@ -176,7 +319,7 @@ function App() {
     setMessage('')
   }
 
-  const addReport = (reason: string) => {
+  const addReport = async (reason: string) => {
     const report: Report = {
       id: `r-${Date.now()}`,
       roomId: room.id,
@@ -188,6 +331,25 @@ function App() {
     }
 
     setReports((items) => [report, ...items])
+
+    if (backendMode === 'live' && activeRoomId) {
+      createProductionReport(activeRoomId, reason)
+        .then(() => loadProductionSafetyEvents())
+        .then((events) => {
+          if (events.length > 0) {
+            setSafetyEvents(events)
+          }
+          setBackendNotice('Репорт сохранен в Supabase и отправлен в очередь модерации.')
+        })
+        .catch((error: unknown) => {
+          setBackendNotice(
+            error instanceof Error
+              ? `Репорт сохранен локально, но Supabase вернул ошибку: ${error.message}`
+              : 'Репорт сохранен локально, но Supabase вернул ошибку.',
+          )
+        })
+    }
+
     setSafetyEvents((items) => [
       {
         id: `s-${Date.now()}`,
@@ -201,13 +363,44 @@ function App() {
     ])
   }
 
-  const joinWaitlist = (event: FormEvent<HTMLFormElement>) => {
+  const updateFeedback = (nextFeedback: UserFeedback) => {
+    setFeedback(nextFeedback)
+
+    if (backendMode !== 'live' || !activeRoomId) return
+
+    saveProductionFeedback(activeRoomId, nextFeedback)
+      .then(() => setBackendNotice('Оценка после комнаты сохранена в Supabase.'))
+      .catch((error: unknown) => {
+        setBackendNotice(
+          error instanceof Error
+            ? `Оценка осталась локально: ${error.message}`
+            : 'Оценка осталась локально из-за ошибки Supabase.',
+        )
+      })
+  }
+
+  const joinWaitlist = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const cleanHandle = telegramHandle.trim().replace(/^@/, '')
 
     if (!cleanHandle) {
       setWaitlistStatus('Добавь Telegram-ник, чтобы попасть в первую волну.')
       return
+    }
+
+    if (backendMode === 'live') {
+      try {
+        await joinProductionWaitlist(cleanHandle)
+        setWaitlistStatus(`@${cleanHandle} сохранен в Supabase waitlist.`)
+        setBackendNotice('Waitlist-заявка записана в Supabase.')
+        return
+      } catch (error: unknown) {
+        setWaitlistStatus(
+          error instanceof Error
+            ? `Supabase не принял заявку: ${error.message}`
+            : 'Supabase не принял заявку, оставили локальный статус.',
+        )
+      }
     }
 
     setWaitlistStatus(`@${cleanHandle} добавлен в демо-очередь. Для MVP это уйдет в Telegram/CRM.`)
@@ -230,6 +423,11 @@ function App() {
           Ранний доступ
         </a>
       </header>
+
+      <div className={`backend-strip ${backendMode}`} role="status" aria-live="polite">
+        <strong>{backendModeLabels[backendMode]}</strong>
+        <span>{backendNotice}</span>
+      </div>
 
       <section className="product-grid" id="check-in">
         <div className="checkin-panel">
@@ -289,9 +487,14 @@ function App() {
             <span>{safetyCopy}</span>
           </div>
 
-          <button className="primary-cta" type="button" onClick={handleMatch} disabled={!canMatch}>
+          <button
+            className="primary-cta"
+            type="button"
+            onClick={handleMatch}
+            disabled={!canMatch || isMatching}
+          >
             <Radio size={19} aria-hidden="true" />
-            Найти своих
+            {isMatching ? 'Создаем комнату...' : 'Найти своих'}
           </button>
         </div>
 
@@ -402,9 +605,9 @@ function App() {
                 placeholder="Написать спокойно, без давления..."
                 aria-label="Сообщение в комнату"
               />
-              <button type="submit">
+              <button type="submit" disabled={isSending}>
                 <Send size={17} aria-hidden="true" />
-                Отправить
+                {isSending ? 'Отправляем...' : 'Отправить'}
               </button>
             </form>
           </div>
@@ -436,10 +639,10 @@ function App() {
                     key={value}
                     type="button"
                     onClick={() =>
-                      setFeedback((current) => ({
-                        ...current,
+                      updateFeedback({
+                        ...feedback,
                         moodAfter: value as UserFeedback['moodAfter'],
-                      }))
+                      })
                     }
                   >
                     {label}
@@ -451,6 +654,7 @@ function App() {
                 onChange={(event) =>
                   setFeedback((current) => ({ ...current, note: event.target.value }))
                 }
+                onBlur={() => updateFeedback(feedback)}
                 placeholder="Что улучшить в подборе?"
               />
             </div>
