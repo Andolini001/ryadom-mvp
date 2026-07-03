@@ -51,8 +51,8 @@
 
 .brand,
 .rail-help,
-.side-nav a,
-.strip-head a {
+.side-nav button,
+.strip-head button {
   color: inherit;
   text-decoration: none;
 }
@@ -65,6 +65,9 @@
   font-size: 30px;
   font-weight: 900;
   letter-spacing: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
 }
 
 .brand-mark {
@@ -165,7 +168,7 @@
   gap: 8px;
 }
 
-.side-nav a {
+.side-nav button {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 10px;
@@ -177,10 +180,12 @@
   border-radius: 14px;
   font-size: 14px;
   font-weight: 720;
+  text-align: left;
+  background: transparent;
 }
 
-.side-nav a:hover,
-.side-nav a:first-child {
+.side-nav button:hover,
+.side-nav button.active {
   color: var(--gold);
   background: rgba(255, 199, 109, 0.08);
   border-color: rgba(255, 199, 109, 0.42);
@@ -256,6 +261,8 @@
   gap: 10px;
   align-items: center;
   margin-top: auto;
+  text-align: left;
+  cursor: pointer;
 }
 
 .rail-help svg {
@@ -314,7 +321,7 @@
 }
 
 .resource-strip span,
-.resource-strip a {
+.resource-strip button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -334,11 +341,83 @@
   color: var(--gold);
 }
 
+.active-tab-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.active-tab-title strong {
+  color: var(--gold);
+}
+
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 336px);
   gap: 16px;
   align-items: stretch;
+}
+
+.tab-home .hero-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tab-home .room-console,
+.tab-home .room-strip,
+.tab-home .ops-grid,
+.tab-home .waitlist-band,
+.tab-home .report-log,
+.tab-room .signal-stage,
+.tab-room .ops-grid,
+.tab-room .waitlist-band,
+.tab-room .report-log,
+.tab-signals .room-console,
+.tab-signals .room-strip,
+.tab-signals .ops-grid,
+.tab-signals .waitlist-band,
+.tab-signals .report-log,
+.tab-signals .stage-copy,
+.tab-signals .checkin-panel,
+.tab-missions .hero-grid,
+.tab-missions .room-strip,
+.tab-missions .report-log,
+.tab-safety .hero-grid,
+.tab-safety .room-strip,
+.tab-safety .waitlist-band {
+  display: none;
+}
+
+.tab-room .hero-grid {
+  grid-template-columns: minmax(320px, 520px);
+}
+
+.tab-signals .hero-grid {
+  display: block;
+}
+
+.tab-signals .signal-stage {
+  min-height: 690px;
+}
+
+.tab-signals .signal-world {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 590px;
+  opacity: 1;
+}
+
+.tab-missions .ops-grid,
+.tab-safety .ops-grid {
+  grid-template-columns: minmax(0, 760px);
+}
+
+.tab-missions .ops-grid .ops-panel:first-child,
+.tab-safety .ops-grid .ops-panel:last-child {
+  display: none;
 }
 
 .signal-stage {
@@ -927,10 +1006,11 @@ small {
   font-size: 22px;
 }
 
-.strip-head a {
+.strip-head button {
   color: var(--gold);
   font-size: 13px;
   font-weight: 800;
+  background: transparent;
 }
 
 .room-cards {
@@ -1187,7 +1267,7 @@ small {
   }
 
   .resource-strip span,
-  .resource-strip a {
+  .resource-strip button {
     min-width: 44px;
     min-height: 44px;
     padding: 0 10px;
@@ -1297,18 +1377,22 @@ small {
     backdrop-filter: blur(18px);
   }
 
-  .mobile-nav a {
+  .mobile-nav button {
     display: grid;
     gap: 4px;
     justify-items: center;
     min-width: 0;
     color: var(--muted);
-    text-decoration: none;
     font-size: 10px;
     font-weight: 780;
+    background: transparent;
   }
 
   .mobile-nav svg {
     color: var(--mint);
+  }
+
+  .mobile-nav button.active {
+    color: var(--gold);
   }
 }

@@ -71,6 +71,7 @@ const anonymousSelf = {
 const defaultThought =
   'Вроде все нормально, но я устал держаться бодро. Хочу поговорить с теми, кто сейчас примерно там же.'
 
+type TabId = 'home' | 'room' | 'signals' | 'missions' | 'safety'
 type BackendMode = 'demo' | 'connecting' | 'live' | 'error'
 
 const eventStatusLabels: Record<SafetyEvent['status'], string> = {
@@ -93,12 +94,12 @@ const backendModeLabels: Record<BackendMode, string> = {
 }
 
 const navItems = [
-  { href: '#check-in', label: 'Главная', icon: Home },
-  { href: '#room', label: 'Комната', icon: MessageCircle, count: '3' },
-  { href: '#signals', label: 'Карта сигналов', icon: Map },
-  { href: '#launch', label: 'Миссии', icon: Target, count: '2' },
-  { href: '#safety', label: 'Защита', icon: Shield },
-]
+  { id: 'home', label: 'Главная', icon: Home },
+  { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
+  { id: 'signals', label: 'Карта сигналов', icon: Map },
+  { id: 'missions', label: 'Миссии', icon: Target, count: '2' },
+  { id: 'safety', label: 'Защита', icon: Shield },
+] satisfies Array<{ id: TabId; label: string; icon: typeof Home; count?: string }>
 
 const buildRoom = (
   state: string,
@@ -136,6 +137,7 @@ const buildRoom = (
 }
 
 function App() {
+  const [activeTab, setActiveTab] = useState<TabId>('home')
   const [stateText, setStateText] = useState('тихая усталость')
   const [thought, setThought] = useState(defaultThought)
   const [intent, setIntent] = useState<Intent>('similar')
@@ -178,6 +180,8 @@ function App() {
   const activeRooms = matches.slice(0, 4)
   const roomMessages = room.messages.slice(-4)
   const progressCount = Math.min(5, Math.max(1, room.messages.filter((item) => item.tone !== 'system').length))
+  const activeNavLabel = navItems.find((item) => item.id === activeTab)?.label ?? 'Главная'
+  const signalNodes = matches.slice(0, 5)
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -431,14 +435,14 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell tab-${activeTab}`}>
       <div className="world-backdrop" aria-hidden="true" />
 
       <aside className="game-rail" aria-label="Игровая навигация">
-        <a className="brand" href="#check-in" aria-label="Рядом">
+        <button className="brand" type="button" onClick={() => setActiveTab('home')} aria-label="Рядом">
           <span className="brand-mark">Р</span>
           <span>Рядом</span>
-        </a>
+        </button>
 
         <div className="level-card">
           <div>
@@ -454,11 +458,16 @@ function App() {
             const Icon = item.icon
 
             return (
-              <a href={item.href} key={item.href}>
+              <button
+                className={activeTab === item.id ? 'active' : ''}
+                type="button"
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+              >
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
                 {item.count && <em>{item.count}</em>}
-              </a>
+              </button>
             )
           })}
         </nav>
@@ -489,13 +498,13 @@ function App() {
           </div>
         </div>
 
-        <a className="rail-help" href="#safety">
+        <button className="rail-help" type="button" onClick={() => setActiveTab('safety')}>
           <ShieldCheck size={24} aria-hidden="true" />
           <span>
             <strong>Ты не один</strong>
             Если сейчас тяжело, мы рядом.
           </span>
-        </a>
+        </button>
       </aside>
 
       <section className="game-board">
@@ -514,11 +523,16 @@ function App() {
               <Flame size={16} aria-hidden="true" />
               3
             </span>
-            <a href="#waitlist" aria-label="Ранний доступ">
+            <button type="button" onClick={() => setActiveTab('missions')} aria-label="Ранний доступ">
               <Bell size={17} aria-hidden="true" />
-            </a>
+            </button>
           </div>
         </header>
+
+        <div className="active-tab-title" aria-live="polite">
+          <span>Текущая вкладка</span>
+          <strong>{activeNavLabel}</strong>
+        </div>
 
         <section className="hero-grid" id="check-in">
           <div className="signal-stage">
@@ -601,7 +615,7 @@ function App() {
               </div>
 
               <div className="signal-map-art" aria-hidden="true">
-                {matches.slice(0, 5).map((match, index) => (
+                {signalNodes.map((match, index) => (
                   <span
                     className={`signal-node node-${index}`}
                     key={match.id}
@@ -700,7 +714,7 @@ function App() {
         <section className="room-strip" aria-label="Активные комнаты">
           <div className="strip-head">
             <h2>Активные комнаты</h2>
-            <a href="#room">смотреть все</a>
+            <button type="button" onClick={() => setActiveTab('signals')}>карта сигналов</button>
           </div>
 
           <div className="room-cards">
@@ -842,10 +856,15 @@ function App() {
           const Icon = item.icon
 
           return (
-            <a href={item.href} key={item.href}>
+            <button
+              className={activeTab === item.id ? 'active' : ''}
+              type="button"
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+            >
               <Icon size={18} aria-hidden="true" />
               <span>{item.label}</span>
-            </a>
+            </button>
           )
         })}
       </nav>
