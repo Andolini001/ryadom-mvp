@@ -1363,6 +1363,462 @@ small {
   display: none;
 }
 
+/* Glass visual system inspired by the provided reference. */
+.app-shell {
+  --glass-bg: rgba(18, 19, 18, 0.38);
+  --glass-bg-strong: rgba(23, 24, 23, 0.54);
+  --glass-bright: rgba(255, 255, 255, 0.22);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-border-soft: rgba(255, 255, 255, 0.16);
+  --glass-shadow: 0 30px 90px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --cream-button: linear-gradient(180deg, rgba(248, 251, 234, 0.96), rgba(218, 226, 207, 0.94));
+  isolation: isolate;
+  background:
+    linear-gradient(90deg, rgba(3, 4, 5, 0.78), rgba(5, 6, 6, 0.36) 44%, rgba(5, 6, 6, 0.78)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.14) 34%, rgba(0, 0, 0, 0.56)),
+    url("/glass-bg.png") center / cover fixed no-repeat,
+    #050606;
+}
+
+.app-shell::before,
+.app-shell::after {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.app-shell::before {
+  background:
+    linear-gradient(104deg, transparent 0 13%, rgba(255, 255, 255, 0.09) 14%, transparent 16% 55%, rgba(141, 233, 222, 0.12) 56%, transparent 58%),
+    linear-gradient(18deg, transparent 0 62%, rgba(246, 219, 178, 0.11) 63%, transparent 66%);
+  mix-blend-mode: screen;
+  opacity: 0.72;
+}
+
+.app-shell::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 20%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 118px);
+  opacity: 0.42;
+}
+
+.world-backdrop {
+  background:
+    linear-gradient(90deg, transparent 0 28%, rgba(255, 255, 255, 0.08) 29%, transparent 30% 71%, rgba(141, 233, 222, 0.08) 72%, transparent 73%),
+    linear-gradient(135deg, rgba(246, 219, 178, 0.12), transparent 36%, rgba(123, 207, 196, 0.1) 74%, transparent);
+  background-size: 100% 100%, 100% 100%;
+  mask-image: none;
+  opacity: 0.72;
+}
+
+.game-rail {
+  height: calc(100svh - 32px);
+  margin: 16px 0 16px 16px;
+  padding: 22px 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.035)),
+    rgba(13, 14, 14, 0.44);
+  border: 1px solid var(--glass-border-soft);
+  border-radius: 34px;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(30px) saturate(1.28);
+}
+
+.game-board {
+  padding-top: 20px;
+}
+
+.brand {
+  color: var(--text);
+  font-size: 28px;
+  text-shadow: 0 0 28px rgba(247, 242, 231, 0.22);
+}
+
+.brand-mark {
+  color: #2a2c29;
+  background:
+    radial-gradient(circle at 33% 30%, #ffffff 0 18%, rgba(255, 255, 255, 0.55) 19% 34%, transparent 35%),
+    linear-gradient(145deg, rgba(248, 251, 234, 0.96), rgba(203, 213, 194, 0.9));
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.36),
+    0 0 36px rgba(248, 251, 234, 0.32);
+}
+
+.level-card,
+.mission-card,
+.streak-card,
+.rail-help,
+.backend-strip,
+.resource-strip span,
+.resource-strip button,
+.signal-stage,
+.room-console,
+.room-strip,
+.ops-panel,
+.waitlist-band,
+.report-log,
+.signal-world-head,
+.signal-node,
+.room-state,
+.member,
+.chat-message,
+.room-card,
+.progress-card,
+.feedback-row button,
+.safety-note,
+.intent,
+input,
+textarea {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.045)),
+    var(--glass-bg);
+  border-color: var(--glass-border-soft);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.signal-stage,
+.room-console,
+.room-strip,
+.ops-panel,
+.waitlist-band,
+.report-log {
+  border-radius: 34px;
+}
+
+.signal-stage {
+  padding: clamp(20px, 2.4vw, 28px);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+    rgba(12, 14, 14, 0.36);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 32px 110px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(30px) saturate(1.22);
+}
+
+.signal-stage::before {
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.16), transparent 24% 74%, rgba(141, 233, 222, 0.14)),
+    linear-gradient(28deg, transparent 0 58%, rgba(246, 219, 178, 0.14) 59%, transparent 62%);
+  opacity: 0.74;
+}
+
+.signal-stage::after,
+.room-console::before,
+.room-strip::before,
+.ops-panel::before,
+.waitlist-band::before {
+  position: absolute;
+  inset: 1px;
+  content: "";
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 18%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 28% 72%, rgba(141, 233, 222, 0.1));
+  opacity: 0.72;
+}
+
+.room-console,
+.room-strip,
+.ops-panel,
+.waitlist-band {
+  position: relative;
+  overflow: hidden;
+}
+
+.room-console > *,
+.room-strip > *,
+.ops-panel > *,
+.waitlist-band > * {
+  position: relative;
+  z-index: 1;
+}
+
+.game-topbar {
+  margin-bottom: 16px;
+}
+
+.backend-strip {
+  min-height: 56px;
+  border-radius: 999px;
+}
+
+.backend-strip strong,
+.backend-strip.demo strong,
+.active-tab-title strong,
+.quest-label,
+.overline,
+.strip-head button {
+  color: var(--mint);
+}
+
+.resource-strip span,
+.resource-strip button {
+  border-radius: 999px;
+}
+
+.resource-strip svg,
+.side-nav button.active svg,
+.mobile-nav svg {
+  color: var(--mint);
+}
+
+.side-nav button {
+  color: rgba(247, 242, 231, 0.72);
+  border-color: transparent;
+  border-radius: 999px;
+}
+
+.side-nav button:hover,
+.side-nav button.active {
+  color: var(--text);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+.side-nav em,
+.live-pill,
+.severity,
+.room-meta span,
+.signal-node small,
+.report-log span {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border-soft);
+}
+
+h1 {
+  color: var(--text);
+  font-size: clamp(42px, 4.1vw, 64px);
+  font-weight: 760;
+  line-height: 1.02;
+  text-shadow: 0 18px 54px rgba(0, 0, 0, 0.32);
+}
+
+h2 {
+  color: var(--text);
+  font-weight: 760;
+}
+
+.stage-subcopy,
+.field small,
+.safety-note,
+.room-card p,
+.room-card small,
+.waitlist-band p,
+.progress-card span,
+.backend-strip span {
+  color: rgba(247, 242, 231, 0.68);
+}
+
+.checkin-panel {
+  gap: 12px;
+  margin-top: 22px;
+}
+
+textarea {
+  min-height: 88px;
+}
+
+.field span {
+  color: rgba(247, 242, 231, 0.82);
+}
+
+input,
+textarea {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.22);
+  border-radius: 18px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(247, 242, 231, 0.46);
+}
+
+input:focus,
+textarea:focus {
+  border-color: rgba(223, 233, 208, 0.78);
+  box-shadow:
+    0 0 0 4px rgba(223, 233, 208, 0.11),
+    0 0 34px rgba(141, 233, 222, 0.18);
+}
+
+.intent {
+  min-height: 66px;
+  padding: 10px 12px;
+  border-radius: 18px;
+}
+
+.intent svg {
+  color: var(--mint);
+}
+
+.intent.active {
+  color: var(--text);
+  background:
+    linear-gradient(145deg, rgba(223, 233, 208, 0.28), rgba(141, 233, 222, 0.1)),
+    rgba(255, 255, 255, 0.08);
+  border-color: rgba(223, 233, 208, 0.62);
+  box-shadow:
+    0 0 0 1px rgba(223, 233, 208, 0.16),
+    0 18px 54px rgba(141, 233, 222, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.intent.active svg,
+.intent.active small {
+  color: var(--mint);
+}
+
+.primary-cta,
+.message-form button,
+.waitlist-form button,
+.room-card button {
+  color: #34362f;
+  background: var(--cream-button);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  box-shadow:
+    0 16px 42px rgba(223, 233, 208, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(122, 132, 112, 0.18);
+}
+
+.primary-cta {
+  min-height: 54px;
+}
+
+.primary-cta:hover,
+.message-form button:hover,
+.waitlist-form button:hover,
+.room-card button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.safety-note.clear svg,
+.panel-heading svg,
+.rail-help svg {
+  color: var(--mint);
+}
+
+.signal-world {
+  opacity: 1;
+}
+
+.signal-world-head {
+  border-color: rgba(255, 255, 255, 0.24);
+  border-radius: 22px;
+}
+
+.signal-world-head span {
+  color: var(--text);
+}
+
+.signal-map-art::before {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.025)),
+    rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.signal-map-art::after {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  opacity: 0.38;
+}
+
+.signal-links i {
+  background: linear-gradient(90deg, transparent, rgba(223, 233, 208, 0.62), rgba(141, 233, 222, 0.5), transparent);
+}
+
+.signal-hub {
+  color: #2e312c;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.86), transparent 23%),
+    var(--cream-button);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 0 0 12px rgba(223, 233, 208, 0.08),
+    0 0 62px rgba(141, 233, 222, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.signal-node {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+    rgba(7, 8, 8, 0.5);
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.signal-node b,
+.avatar {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 26px rgba(255, 255, 255, 0.16);
+}
+
+.room-state {
+  color: var(--mint);
+  border-color: rgba(223, 233, 208, 0.24);
+}
+
+.chat-message.system {
+  background:
+    linear-gradient(145deg, rgba(223, 233, 208, 0.12), rgba(255, 255, 255, 0.035)),
+    var(--glass-bg);
+}
+
+.chat-message.warm {
+  color: #2e312c;
+  background: linear-gradient(145deg, rgba(248, 251, 234, 0.88), rgba(191, 225, 217, 0.68));
+}
+
+.room-card.active {
+  border-color: rgba(223, 233, 208, 0.64);
+  box-shadow:
+    0 0 0 1px rgba(223, 233, 208, 0.12),
+    0 18px 54px rgba(223, 233, 208, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+.severity.high,
+.room-actions button {
+  color: #ffb5a5;
+  background: rgba(255, 118, 95, 0.12);
+}
+
+.severity.medium,
+.side-nav em {
+  color: var(--gold);
+}
+
+.severity.low,
+.waitlist-form small {
+  color: var(--mint);
+}
+
+.feedback-row button.selected,
+.streak-card span.done {
+  color: #2e312c;
+  background: var(--cream-button);
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -1623,5 +2079,61 @@ small {
 
   .mobile-nav button.active {
     color: var(--gold);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    background-position: center top;
+    background-attachment: scroll;
+  }
+
+  .signal-stage {
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+
+  .stage-subcopy {
+    font-size: 13px;
+  }
+
+  .checkin-panel {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  textarea {
+    min-height: 76px;
+  }
+
+  .intent {
+    min-height: 56px;
+    padding: 9px;
+  }
+
+  .primary-cta {
+    min-height: 50px;
+  }
+
+  .backend-strip,
+  .resource-strip span,
+  .resource-strip button {
+    border-radius: 999px;
+  }
+
+  .mobile-nav {
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.045)),
+      rgba(10, 12, 12, 0.58);
+    border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 18px 58px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(28px) saturate(1.25);
+  }
+
+  .mobile-nav button.active {
+    color: var(--text);
   }
 }
