@@ -620,6 +620,21 @@ function App() {
               </div>
 
               <div className="signal-map-art" aria-hidden="true">
+                <div className="signal-links">
+                  <i className="link-0" />
+                  <i className="link-1" />
+                  <i className="link-2" />
+                  <i className="link-3" />
+                </div>
+                <div className="signal-hub">
+                  <strong>{Math.min(signalNodes.length, 5)}</strong>
+                  <span>совпадения</span>
+                </div>
+                <div className="signal-specks">
+                  {Array.from({ length: 16 }).map((_, index) => (
+                    <i key={index} />
+                  ))}
+                </div>
                 {signalNodes.map((match, index) => (
                   <span
                     className={`signal-node node-${index}`}
