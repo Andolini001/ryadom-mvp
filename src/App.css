@@ -1239,6 +1239,18 @@ small {
   }
 }
 
+@keyframes typingDot {
+  from {
+    opacity: 0.36;
+    transform: translateY(1px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 .room-console,
 .room-strip,
 .ops-panel,
@@ -1376,6 +1388,14 @@ small {
   background: linear-gradient(135deg, rgba(105, 224, 194, 0.95), rgba(255, 203, 128, 0.9));
 }
 
+.chat-message.typing {
+  color: rgba(247, 242, 231, 0.74);
+  background:
+    linear-gradient(145deg, rgba(223, 233, 208, 0.1), rgba(141, 233, 222, 0.045)),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(223, 233, 208, 0.16);
+}
+
 .chat-message div {
   display: flex;
   justify-content: space-between;
@@ -1391,6 +1411,30 @@ small {
 
 .chat-message p {
   margin-bottom: 0;
+}
+
+.chat-message.typing p {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  min-height: 18px;
+}
+
+.chat-message.typing i {
+  width: 6px;
+  height: 6px;
+  background: var(--mint);
+  border-radius: 50%;
+  opacity: 0.46;
+  animation: typingDot 0.86s ease-in-out infinite alternate;
+}
+
+.chat-message.typing i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.chat-message.typing i:nth-child(3) {
+  animation-delay: 0.24s;
 }
 
 .conversation-deck {
@@ -2640,26 +2684,34 @@ textarea:focus {
   }
 }
 
-/* Game-like signal map: keep the glass shell, but restore the rich island map. */
+/* Game-like signal map: the illustrated island map is the primary surface. */
+.signal-world {
+  filter: drop-shadow(0 30px 64px rgba(0, 0, 0, 0.34));
+}
+
+.signal-world-head {
+  display: none;
+}
+
 .signal-map-art {
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(5, 9, 13, 0.04), rgba(5, 9, 13, 0.22)),
+    linear-gradient(180deg, rgba(5, 9, 13, 0.02), rgba(5, 9, 13, 0.12)),
     url("/signal-map-bg.png") center / cover no-repeat;
   border: 1px solid rgba(246, 208, 152, 0.22);
-  border-radius: 30px;
+  border-radius: 26px;
   box-shadow:
-    0 26px 74px rgba(0, 0, 0, 0.34),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 -80px 110px rgba(2, 7, 12, 0.24);
+    0 28px 88px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -64px 90px rgba(2, 7, 12, 0.18);
 }
 
 .signal-map-art::before {
   inset: 0;
   background:
-    radial-gradient(circle at 50% 39%, rgba(89, 246, 214, 0.1), transparent 24%),
-    radial-gradient(circle at 77% 17%, rgba(170, 105, 255, 0.08), transparent 21%),
-    linear-gradient(180deg, rgba(1, 7, 15, 0.08), transparent 24%, rgba(1, 7, 15, 0.42));
+    radial-gradient(circle at 50% 39%, rgba(89, 246, 214, 0.08), transparent 25%),
+    radial-gradient(circle at 77% 17%, rgba(170, 105, 255, 0.07), transparent 22%),
+    linear-gradient(180deg, rgba(1, 7, 15, 0.03), transparent 28%, rgba(1, 7, 15, 0.22));
   border: 0;
   border-radius: inherit;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -2674,7 +2726,7 @@ textarea:focus {
   background-size: auto;
   border-radius: inherit;
   mask-image: none;
-  opacity: 1;
+  opacity: 0.78;
 }
 
 .signal-links,
@@ -2684,28 +2736,86 @@ textarea:focus {
   display: none;
 }
 
+.match-radar {
+  right: 18px;
+  bottom: 16px;
+  left: 18px;
+  z-index: 4;
+  grid-template-columns: 70px minmax(0, 1fr);
+  min-height: 88px;
+  padding: 10px 12px;
+  border-radius: 22px;
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.match-radar.searching {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.match-radar.ready,
+.match-radar.locked {
+  visibility: hidden;
+}
+
+.radar-orbit {
+  --radar-radius: 26px;
+  width: 64px;
+  height: 64px;
+}
+
+.radar-orbit strong {
+  font-size: 22px;
+}
+
+.radar-orbit small {
+  margin-top: 25px;
+  font-size: 8px;
+}
+
+.radar-matches {
+  display: none;
+}
+
+.radar-status strong {
+  font-size: 14px;
+}
+
+.radar-stats span {
+  padding: 5px 7px;
+  font-size: 10px;
+}
+
 .tab-signals .signal-stage {
   display: grid;
-  width: min(430px, 100%);
+  width: min(346px, 100%);
   margin: 0 auto;
-  padding: 24px 28px 28px;
-  min-height: 780px;
+  padding: 0;
+  min-height: auto;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
   place-items: center;
+}
+
+.tab-signals .signal-stage::before,
+.tab-signals .signal-stage::after {
+  display: none;
 }
 
 .tab-signals .signal-world {
   width: 100%;
-  height: 728px;
+  height: auto;
+  aspect-ratio: 346 / 649;
   margin: 0 auto;
 }
 
-.tab-signals .signal-world-head {
-  position: relative;
-  z-index: 2;
-}
-
+.signal-map-art,
 .tab-signals .signal-map-art {
-  inset: 72px 0 0;
+  inset: 0;
 }
 
 @media (max-width: 1180px) {
@@ -2722,7 +2832,7 @@ textarea:focus {
   }
 
   .tab-signals .signal-world {
-    height: 720px;
+    height: auto;
   }
 }
 
@@ -2732,7 +2842,7 @@ textarea:focus {
   }
 
   .signal-map-art {
-    inset: 72px 8px 0;
+    inset: 0;
     border-radius: 28px;
   }
 
@@ -2772,20 +2882,21 @@ textarea:focus {
   }
 
   .tab-signals .signal-stage {
-    width: 100%;
-    padding: 16px;
-    min-height: 740px;
+    width: min(346px, 100%);
+    padding: 0;
+    min-height: auto;
   }
 
   .tab-signals .signal-world {
     width: 100%;
-    height: 690px;
+    height: auto;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .match-radar.searching .radar-ring i,
-  .mobile-search-toast i {
+  .mobile-search-toast i,
+  .chat-message.typing i {
     animation: none;
   }
 }

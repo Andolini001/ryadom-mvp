@@ -169,6 +169,28 @@ const conversationCards = [
   message: string
 }>
 
+const buildDemoReply = (body: string, topics: string[]) => {
+  const normalized = body.toLocaleLowerCase('ru-RU')
+
+  if (normalized.includes('настоя') || topics.includes('смысл')) {
+    return 'Для меня настоящее там, где после фразы внутри становится чуть тише. Похоже, мы оба сейчас ищем не ответ, а точку опоры.'
+  }
+
+  if (normalized.includes('совпад') || normalized.includes('похож')) {
+    return 'У меня совпадает не сама ситуация, а ощущение: хочется, чтобы тебя поняли без долгого объяснения контекста.'
+  }
+
+  if (normalized.includes('честн') || topics.includes('глубина')) {
+    return 'Мой честный факт: я часто понимаю, что чувствую, только когда кто-то рядом не торопит с выводами.'
+  }
+
+  if (topics.includes('будущее')) {
+    return 'Я тоже думаю, что будущее собирается из маленьких выборов. Иногда легче выбирать, когда кто-то просто держит рядом тишину.'
+  }
+
+  return 'Я рядом с этой мыслью. Могу не советовать, а просто попробовать понять, что в ней для тебя самое тяжелое или самое живое.'
+}
+
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
@@ -238,7 +260,9 @@ function App() {
   const [isMatching, setIsMatching] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [selectedConversationCardId, setSelectedConversationCardId] = useState<string | null>(null)
+  const [typingMember, setTypingMember] = useState<string | null>(null)
   const messageInputRef = useRef<HTMLInputElement>(null)
+  const demoReplyTimerRef = useRef<number | null>(null)
 
   const signal = useMemo(
     () => buildMoodSignal(stateText, thought, intent),
@@ -313,6 +337,23 @@ function App() {
     })
   }, [activeRoomId, backendMode])
 
+  useEffect(
+    () => () => {
+      if (demoReplyTimerRef.current !== null) {
+        window.clearTimeout(demoReplyTimerRef.current)
+      }
+    },
+    [],
+  )
+
+  const clearDemoReply = () => {
+    if (demoReplyTimerRef.current !== null) {
+      window.clearTimeout(demoReplyTimerRef.current)
+      demoReplyTimerRef.current = null
+    }
+    setTypingMember(null)
+  }
+
   const safetyCopy = {
     clear: 'Можно матчить: язык RU, 18-30, риск низкий, исходный текст хранится минимально.',
     sensitive: 'Чек-ин длинный или чувствительный. MVP просит сократить мысль до сути перед матчингом.',
@@ -327,10 +368,12 @@ function App() {
     setIntent(spark.intent)
     setHasMatched(false)
     setIsMatching(false)
+    clearDemoReply()
   }
 
   const handleMatch = async () => {
     if (isMatching) return
+    clearDemoReply()
 
     if (signal.safetyLevel === 'crisis' || signal.safetyLevel === 'blocked') {
       const event: SafetyEvent = {
@@ -408,6 +451,7 @@ function App() {
     setActiveRoomId(null)
     setLiveMatches(null)
     setIsMatching(false)
+    clearDemoReply()
     setSelectedConversationCardId(null)
     setHasMatched(true)
     setActiveTab('room')
@@ -417,6 +461,38 @@ function App() {
     setMessage(card.message)
     setSelectedConversationCardId(card.id)
     window.requestAnimationFrame(() => messageInputRef.current?.focus())
+  }
+
+  const scheduleDemoReply = (body: string) => {
+    if (backendMode === 'live' && activeRoomId) return
+
+    const peer = room.members.find((member) => member.id !== anonymousSelf.id)
+    if (!peer) return
+
+    clearDemoReply()
+    const targetRoomId = room.id
+    setTypingMember(peer.alias)
+
+    demoReplyTimerRef.current = window.setTimeout(() => {
+      const reply: Message = {
+        id: `m-demo-${Date.now()}`,
+        author: peer.alias,
+        body: buildDemoReply(body, signal.topics),
+        time: 'сейчас',
+        tone: 'plain',
+      }
+
+      setRoom((current) => {
+        if (current.id !== targetRoomId) return current
+
+        return {
+          ...current,
+          messages: [...current.messages, reply],
+        }
+      })
+      setTypingMember(null)
+      demoReplyTimerRef.current = null
+    }, 900)
   }
 
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -465,6 +541,7 @@ function App() {
     }))
     setMessage('')
     setSelectedConversationCardId(null)
+    scheduleDemoReply(body)
   }
 
   const addReport = async (reason: string) => {
@@ -897,6 +974,19 @@ function App() {
                   <p>{item.body}</p>
                 </article>
               ))}
+              {typingMember && (
+                <article className="chat-message typing" aria-label={`${typingMember} печатает`}>
+                  <div>
+                    <strong>{typingMember}</strong>
+                    <span>печатает</span>
+                  </div>
+                  <p>
+                    <i />
+                    <i />
+                    <i />
+                  </p>
+                </article>
+              )}
             </div>
 
             <div className="conversation-deck" aria-label="Карточки для начала разговора">
