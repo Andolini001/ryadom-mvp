@@ -1393,6 +1393,91 @@ small {
   margin-bottom: 0;
 }
 
+.conversation-deck {
+  display: grid;
+  gap: 9px;
+}
+
+.conversation-deck-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.conversation-deck-head span {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  color: rgba(247, 242, 231, 0.84);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.conversation-deck-head svg {
+  color: var(--mint);
+}
+
+.conversation-deck-head small {
+  color: rgba(247, 242, 231, 0.56);
+  font-size: 11px;
+  text-align: right;
+}
+
+.conversation-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.conversation-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 92px;
+  padding: 10px;
+  color: rgba(247, 242, 231, 0.78);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 238, 205, 0.12);
+  border-radius: 16px;
+}
+
+.conversation-card:hover,
+.conversation-card.selected {
+  color: var(--text);
+  border-color: rgba(223, 233, 208, 0.48);
+}
+
+.conversation-card.selected {
+  background:
+    linear-gradient(145deg, rgba(223, 233, 208, 0.2), rgba(141, 233, 222, 0.08)),
+    rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(223, 233, 208, 0.12),
+    0 16px 42px rgba(141, 233, 222, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.conversation-card span {
+  color: var(--mint);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.conversation-card strong {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.12;
+}
+
+.conversation-card small {
+  color: rgba(247, 242, 231, 0.58);
+  font-size: 11px;
+}
+
 .message-form {
   display: grid;
   grid-template-columns: 1fr 46px;
@@ -1748,6 +1833,7 @@ small {
 .progress-card,
 .feedback-row button,
 .safety-note,
+.conversation-card,
 .spark-card,
 .intent,
 input,
@@ -2229,6 +2315,19 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .conversation-card-grid {
+    grid-auto-columns: minmax(156px, 1fr);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .conversation-card-grid::-webkit-scrollbar {
+    display: none;
+  }
+
   .stage-subcopy {
     font-size: 14px;
   }
@@ -2432,6 +2531,15 @@ textarea:focus {
   .spark-deck-head {
     display: grid;
     gap: 3px;
+  }
+
+  .conversation-deck-head {
+    display: grid;
+    gap: 3px;
+  }
+
+  .conversation-deck-head small {
+    text-align: left;
   }
 
   .spark-deck-head small {

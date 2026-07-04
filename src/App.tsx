@@ -22,7 +22,7 @@ import {
   UserRoundCheck,
   Users,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   initialRoom,
@@ -132,6 +132,43 @@ const sparkDeck = [
   intent: Intent
 }>
 
+const conversationCards = [
+  {
+    id: 'real',
+    title: 'что настоящее?',
+    tone: 'глубина',
+    xp: 18,
+    body: 'Отделяет живую мысль от шума вокруг.',
+    message:
+      'Мне интересно: что в этой теме для тебя сейчас самое настоящее, а что просто шум вокруг?',
+  },
+  {
+    id: 'mirror',
+    title: 'где совпали?',
+    tone: 'резонанс',
+    xp: 14,
+    body: 'Помогает быстро найти общий опыт.',
+    message:
+      'У кого было что-то похожее? Хочу понять, где мы совпадаем, а где чувствуем по-разному.',
+  },
+  {
+    id: 'honest',
+    title: 'один честный факт',
+    tone: 'искренность',
+    xp: 12,
+    body: 'Мягкий старт без идеальной формулировки.',
+    message:
+      'Один честный факт про меня сейчас: я хочу говорить не идеально, а по-настоящему.',
+  },
+] satisfies Array<{
+  id: string
+  title: string
+  tone: string
+  xp: number
+  body: string
+  message: string
+}>
+
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
@@ -200,6 +237,8 @@ function App() {
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
   const [isMatching, setIsMatching] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [selectedConversationCardId, setSelectedConversationCardId] = useState<string | null>(null)
+  const messageInputRef = useRef<HTMLInputElement>(null)
 
   const signal = useMemo(
     () => buildMoodSignal(stateText, thought, intent),
@@ -334,6 +373,7 @@ function App() {
           setRoom(result.room)
           setActiveRoomId(result.room.id)
           setLiveMatches(result.candidates)
+          setSelectedConversationCardId(null)
           setHasMatched(true)
           setActiveTab('room')
           setBackendNotice('Комната создана в Supabase. Сообщения идут через realtime.')
@@ -356,6 +396,7 @@ function App() {
     setRoom(buildRoom(signal.state, fallbackMatches))
     setActiveRoomId(null)
     setLiveMatches(null)
+    setSelectedConversationCardId(null)
     setHasMatched(true)
     setActiveTab('room')
     setIsMatching(false)
@@ -367,8 +408,15 @@ function App() {
     setActiveRoomId(null)
     setLiveMatches(null)
     setIsMatching(false)
+    setSelectedConversationCardId(null)
     setHasMatched(true)
     setActiveTab('room')
+  }
+
+  const applyConversationCard = (card: (typeof conversationCards)[number]) => {
+    setMessage(card.message)
+    setSelectedConversationCardId(card.id)
+    window.requestAnimationFrame(() => messageInputRef.current?.focus())
   }
 
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -390,6 +438,7 @@ function App() {
           }
         })
         setMessage('')
+        setSelectedConversationCardId(null)
         return
       } catch (error: unknown) {
         setBackendNotice(
@@ -415,6 +464,7 @@ function App() {
       messages: [...current.messages, nextMessage],
     }))
     setMessage('')
+    setSelectedConversationCardId(null)
   }
 
   const addReport = async (reason: string) => {
@@ -849,8 +899,34 @@ function App() {
               ))}
             </div>
 
+            <div className="conversation-deck" aria-label="Карточки для начала разговора">
+              <div className="conversation-deck-head">
+                <span>
+                  <Sparkles size={15} aria-hidden="true" />
+                  Карты разговора
+                </span>
+                <small>выбери ход, получи +XP за первый ответ</small>
+              </div>
+
+              <div className="conversation-card-grid">
+                {conversationCards.map((card) => (
+                  <button
+                    className={selectedConversationCardId === card.id ? 'conversation-card selected' : 'conversation-card'}
+                    key={card.id}
+                    type="button"
+                    onClick={() => applyConversationCard(card)}
+                  >
+                    <span>{card.tone} · +{card.xp} XP</span>
+                    <strong>{card.title}</strong>
+                    <small>{card.body}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <form className="message-form" onSubmit={sendMessage}>
               <input
+                ref={messageInputRef}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder="Напиши сообщение..."
