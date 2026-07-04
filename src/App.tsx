@@ -95,6 +95,43 @@ const backendModeLabels: Record<BackendMode, string> = {
 
 const stateWordLimit = 8
 
+const sparkDeck = [
+  {
+    id: 'meaning',
+    rarity: 'редкая',
+    xp: 35,
+    state: 'ищу смысл в шуме',
+    thought:
+      'Иногда кажется, что вокруг много движения, но мало настоящего смысла. Хочу поговорить с тем, кто тоже это замечает.',
+    intent: 'similar',
+  },
+  {
+    id: 'future',
+    rarity: 'искрящаяся',
+    xp: 50,
+    state: 'думаю о будущем',
+    thought:
+      'Меня цепляет мысль, что мы строим жизнь из случайных решений. Интересно, можно ли выбирать себя осознаннее.',
+    intent: 'support',
+  },
+  {
+    id: 'quiet',
+    rarity: 'тихая',
+    xp: 25,
+    state: 'хочу глубины',
+    thought:
+      'Не хочется обычного small talk. Хочется разговора, после которого в голове становится чуть просторнее.',
+    intent: 'vent',
+  },
+] satisfies Array<{
+  id: string
+  rarity: string
+  xp: number
+  state: string
+  thought: string
+  intent: Intent
+}>
+
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
@@ -238,6 +275,13 @@ function App() {
     crisis:
       'Этот чек-ин не отправляется в обычный чат. Если есть риск прямо сейчас, обратись в местную экстренную службу или к человеку рядом.',
   }[signal.safetyLevel]
+
+  const applySpark = (spark: (typeof sparkDeck)[number]) => {
+    setStateText(spark.state)
+    setThought(spark.thought)
+    setIntent(spark.intent)
+    setHasMatched(false)
+  }
 
   const handleMatch = async () => {
     if (isMatching) return
@@ -576,6 +620,31 @@ function App() {
                 />
                 <small>{thought.length}/420 · исходный текст можно удалить после комнаты.</small>
               </label>
+
+              <div className="spark-deck" aria-label="Искры для необычного чек-ина">
+                <div className="spark-deck-head">
+                  <span>
+                    <Sparkles size={15} aria-hidden="true" />
+                    Колода искр
+                  </span>
+                  <small>выбери тему и получи бонус к совпадению</small>
+                </div>
+
+                <div className="spark-grid">
+                  {sparkDeck.map((spark) => (
+                    <button
+                      className={stateText === spark.state ? 'spark-card selected' : 'spark-card'}
+                      key={spark.id}
+                      type="button"
+                      onClick={() => applySpark(spark)}
+                    >
+                      <span>{spark.rarity}</span>
+                      <strong>{spark.state}</strong>
+                      <small>+{spark.xp} XP · {intentLabels[spark.intent]}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="intent-grid" aria-label="Выбор намерения">
                 {(Object.keys(intentLabels) as Intent[]).map((item) => {
