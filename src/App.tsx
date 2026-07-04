@@ -221,6 +221,12 @@ function App() {
   const progressCount = Math.min(5, Math.max(1, room.messages.filter((item) => item.tone !== 'system').length))
   const activeNavLabel = navItems.find((item) => item.id === activeTab)?.label ?? 'Главная'
   const signalNodes = matches.slice(0, 5)
+  const radarMatches = matches.slice(0, 3)
+  const topMatchScore = radarMatches[0]?.score ?? 34
+  const resonanceScore = Math.min(99, Math.max(28, topMatchScore + signal.topics.length * 3))
+  const rewardXp = 40 + radarMatches.length * 8 + signal.topics.length * 9
+  const radarStatus = isMatching ? 'идет поиск' : canMatch ? 'готов к запуску' : 'нужен короткий сигнал'
+  const radarTopic = signal.topics[0] ?? 'новая мысль'
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -281,6 +287,7 @@ function App() {
     setThought(spark.thought)
     setIntent(spark.intent)
     setHasMatched(false)
+    setIsMatching(false)
   }
 
   const handleMatch = async () => {
@@ -302,10 +309,20 @@ function App() {
     }
 
     setIsMatching(true)
+    const radarStartedAt = window.performance.now()
+    const keepRadarVisible = async () => {
+      const remainingMs = 680 - (window.performance.now() - radarStartedAt)
+
+      if (remainingMs > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, remainingMs))
+      }
+    }
 
     if (backendMode === 'live') {
       try {
         const result = await createRoomFromSignal(signal)
+        await keepRadarVisible()
+
         if (result.safetyBlocked) {
           setHasMatched(false)
           setActiveTab('safety')
@@ -335,6 +352,7 @@ function App() {
     }
 
     const fallbackMatches = localMatches
+    await keepRadarVisible()
     setRoom(buildRoom(signal.state, fallbackMatches))
     setActiveRoomId(null)
     setLiveMatches(null)
@@ -348,6 +366,7 @@ function App() {
     setRoom(buildRoom(match.state, focusedMatches))
     setActiveRoomId(null)
     setLiveMatches(null)
+    setIsMatching(false)
     setHasMatched(true)
     setActiveTab('room')
   }
@@ -675,6 +694,17 @@ function App() {
                 {isMatching ? 'Создаем комнату...' : 'Найти своих'}
               </button>
 
+              {isMatching && (
+                <div className="mobile-search-toast" aria-live="polite">
+                  <i />
+                  <div>
+                    <strong>{resonanceScore} резонанс</strong>
+                    <span>{radarTopic} · {radarMatches.length} рядом · +{rewardXp} XP</span>
+                  </div>
+                  <Sparkles size={17} aria-hidden="true" />
+                </div>
+              )}
+
               <div className={`safety-note ${signal.safetyLevel}`}>
                 <AlertTriangle size={18} aria-hidden="true" />
                 <span>{safetyCopy}</span>
@@ -688,6 +718,48 @@ function App() {
                   Сигналов рядом: {onlineSignals}
                 </span>
                 <small>обновляется каждые 15 секунд</small>
+              </div>
+
+              <div className={`match-radar ${isMatching ? 'searching' : canMatch ? 'ready' : 'locked'}`} aria-live="polite">
+                <div className="radar-orbit">
+                  <span
+                    className="radar-ring"
+                    style={{
+                      background: `conic-gradient(rgba(223, 233, 208, 0.96) ${resonanceScore}%, rgba(255, 255, 255, 0.13) 0)`,
+                    }}
+                  >
+                    <i />
+                  </span>
+                  <strong>{resonanceScore}</strong>
+                  <small>резонанс</small>
+                </div>
+
+                <div className="radar-data">
+                  <div className="radar-status">
+                    <span>{radarStatus}</span>
+                    <strong>{radarTopic}</strong>
+                  </div>
+
+                  <div className="radar-stats">
+                    <span>
+                      <Users size={14} aria-hidden="true" />
+                      {radarMatches.length} рядом
+                    </span>
+                    <span>
+                      <Gem size={14} aria-hidden="true" />
+                      +{rewardXp} XP
+                    </span>
+                  </div>
+
+                  <div className="radar-matches">
+                    {radarMatches.map((match) => (
+                      <span className="radar-match-chip" key={match.id}>
+                        <i style={{ background: match.user.hue }} />
+                        {match.state}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="signal-map-art" aria-hidden="true">

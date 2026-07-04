@@ -111,6 +111,54 @@ export const seedCheckIns: CheckIn[] = [
     topics: ['тишина', 'границы', 'работа', 'усталость'],
     minutesAgo: 18,
   },
+  {
+    id: 'ci-07',
+    user: {
+      id: 'u-07',
+      alias: 'август 26',
+      hue: '#7b7fc8',
+      lastSeen: 'онлайн',
+      trustScore: 93,
+    },
+    state: 'ищу смысл в шуме',
+    thought:
+      'Тоже ловлю ощущение, что вокруг много движения, а хочется понять, что из этого правда мое.',
+    intent: 'similar',
+    topics: ['смысл', 'перегруз', 'одиночество'],
+    minutesAgo: 4,
+  },
+  {
+    id: 'ci-08',
+    user: {
+      id: 'u-08',
+      alias: 'июнь 23',
+      hue: '#c28f55',
+      lastSeen: '3 мин назад',
+      trustScore: 90,
+    },
+    state: 'думаю о будущем',
+    thought:
+      'Меня тоже цепляет, что будущее складывается из маленьких выборов, которые сначала кажутся случайными.',
+    intent: 'support',
+    topics: ['будущее', 'смысл', 'поддержка'],
+    minutesAgo: 7,
+  },
+  {
+    id: 'ci-09',
+    user: {
+      id: 'u-09',
+      alias: 'океан 28',
+      hue: '#5f9f92',
+      lastSeen: 'онлайн',
+      trustScore: 95,
+    },
+    state: 'хочу глубины',
+    thought:
+      'Не хватает разговора, где можно не играть бодрость и спокойно подумать вслух вместе с кем-то.',
+    intent: 'vent',
+    topics: ['глубина', 'тишина', 'поддержка'],
+    minutesAgo: 10,
+  },
 ]
 
 export const initialRoom: Room = {
