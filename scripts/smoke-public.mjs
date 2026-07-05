@@ -7,13 +7,20 @@ const requiredStaticAssets = [
   'glass-bg.png',
 ]
 
+const requestTimeoutMs = 15_000
+
 const fail = (message) => {
   console.error(message)
   process.exitCode = 1
 }
 
+const fetchWithTimeout = (url) =>
+  fetch(url, {
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  })
+
 const fetchText = async (url) => {
-  const response = await fetch(url)
+  const response = await fetchWithTimeout(url)
 
   if (!response.ok) {
     throw new Error(`${url} returned ${response.status}`)
@@ -23,7 +30,7 @@ const fetchText = async (url) => {
 }
 
 const fetchOk = async (url) => {
-  const response = await fetch(url)
+  const response = await fetchWithTimeout(url)
 
   if (!response.ok) {
     throw new Error(`${url} returned ${response.status}`)
