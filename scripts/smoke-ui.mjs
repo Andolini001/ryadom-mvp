@@ -58,9 +58,10 @@ const findFreePort = async () =>
 
 const startPreview = (port) => {
   const viteBin = resolve(scriptDir, '..', 'node_modules', 'vite', 'bin', 'vite.js')
+  const baseArgs = smokePath === '/' ? [] : [`--base=${smokePath}`]
   const child = spawn(
     process.execPath,
-    [viteBin, 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
+    [viteBin, 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort', ...baseArgs],
     {
       env: { ...process.env, BROWSER: 'none' },
       stdio: ['ignore', 'pipe', 'pipe'],
