@@ -261,6 +261,7 @@ function App() {
   const [isSending, setIsSending] = useState(false)
   const [selectedConversationCardId, setSelectedConversationCardId] = useState<string | null>(null)
   const [typingMember, setTypingMember] = useState<string | null>(null)
+  const [rewardClaimed, setRewardClaimed] = useState(false)
   const messageInputRef = useRef<HTMLInputElement>(null)
   const demoReplyTimerRef = useRef<number | null>(null)
 
@@ -290,6 +291,18 @@ function App() {
   const rewardXp = 40 + radarMatches.length * 8 + signal.topics.length * 9
   const radarStatus = isMatching ? 'идет поиск' : canMatch ? 'готов к запуску' : 'нужен короткий сигнал'
   const radarTopic = signal.topics[0] ?? 'новая мысль'
+  const resonanceProgress = Math.min(
+    100,
+    (wordCount >= 1 && wordCount <= stateWordLimit ? 28 : 0) +
+      (thought.trim().length >= 18 ? 28 : 0) +
+      Math.min(signal.topics.length, 3) * 12 +
+      (radarMatches.length > 0 ? 8 : 0),
+  )
+  const topicChips = signal.topics.length > 0 ? signal.topics.slice(0, 4) : ['ищем тему']
+  const leadingMatch = radarMatches[0]
+  const signalRarity =
+    resonanceScore >= 82 ? 'редкий резонанс' : resonanceScore >= 62 ? 'сильный сигнал' : 'мягкий старт'
+  const rewardLabel = rewardClaimed ? 'Награда собрана' : hasMatched ? 'Открыть награду' : 'Награда ждёт комнату'
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -424,6 +437,7 @@ function App() {
           setActiveRoomId(result.room.id)
           setLiveMatches(result.candidates)
           setSelectedConversationCardId(null)
+          setRewardClaimed(false)
           setHasMatched(true)
           setActiveTab('room')
           setBackendNotice('Комната создана в Supabase. Сообщения идут через живой backend.')
@@ -447,6 +461,7 @@ function App() {
     setActiveRoomId(null)
     setLiveMatches(null)
     setSelectedConversationCardId(null)
+    setRewardClaimed(false)
     setHasMatched(true)
     setActiveTab('room')
     setIsMatching(false)
@@ -460,6 +475,7 @@ function App() {
     setIsMatching(false)
     clearDemoReply()
     setSelectedConversationCardId(null)
+    setRewardClaimed(false)
     setHasMatched(true)
     setActiveTab('room')
   }
@@ -774,28 +790,32 @@ function App() {
                 <small>{thought.length}/420 · исходный текст можно удалить после комнаты.</small>
               </label>
 
-              <div className="spark-deck" aria-label="Искры для необычного чек-ина">
-                <div className="spark-deck-head">
-                  <span>
-                    <Sparkles size={15} aria-hidden="true" />
-                    Колода искр
-                  </span>
-                  <small>выбери тему и получи бонус к совпадению</small>
+              <div className="resonance-profile" aria-live="polite">
+                <div className="resonance-core">
+                  <div>
+                    <span>{signalRarity}</span>
+                    <strong>{resonanceScore} резонанс</strong>
+                  </div>
+                  <em>+{rewardXp} XP</em>
                 </div>
 
-                <div className="spark-grid">
-                  {sparkDeck.map((spark) => (
-                    <button
-                      className={stateText === spark.state ? 'spark-card selected' : 'spark-card'}
-                      key={spark.id}
-                      type="button"
-                      onClick={() => applySpark(spark)}
-                    >
-                      <span>{spark.rarity}</span>
-                      <strong>{spark.state}</strong>
-                      <small>+{spark.xp} XP · {intentLabels[spark.intent]}</small>
-                    </button>
+                <div className="resonance-bar" aria-hidden="true">
+                  <i style={{ width: `${resonanceProgress}%` }} />
+                </div>
+
+                <div className="resonance-tags">
+                  {topicChips.map((topic) => (
+                    <span key={topic}>{topic}</span>
                   ))}
+                </div>
+
+                <div className="resonance-next">
+                  <Sparkles size={15} aria-hidden="true" />
+                  <span>
+                    {leadingMatch
+                      ? `Ближе всего: ${leadingMatch.state}, ${leadingMatch.score}%`
+                      : 'Добавь мысль, чтобы карта нашла похожих людей'}
+                  </span>
                 </div>
               </div>
 
@@ -838,6 +858,31 @@ function App() {
                   <Sparkles size={17} aria-hidden="true" />
                 </div>
               )}
+
+              <div className="spark-deck" aria-label="Искры для необычного чек-ина">
+                <div className="spark-deck-head">
+                  <span>
+                    <Sparkles size={15} aria-hidden="true" />
+                    Колода искр
+                  </span>
+                  <small>выбери тему и получи бонус к совпадению</small>
+                </div>
+
+                <div className="spark-grid">
+                  {sparkDeck.map((spark) => (
+                    <button
+                      className={stateText === spark.state ? 'spark-card selected' : 'spark-card'}
+                      key={spark.id}
+                      type="button"
+                      onClick={() => applySpark(spark)}
+                    >
+                      <span>{spark.rarity}</span>
+                      <strong>{spark.state}</strong>
+                      <small>+{spark.xp} XP · {intentLabels[spark.intent]}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className={`safety-note ${signal.safetyLevel}`}>
                 <AlertTriangle size={18} aria-hidden="true" />
@@ -958,6 +1003,29 @@ function App() {
                 <strong>{room.title}</strong>
                 <span>{hasMatched ? 'сессия открыта' : 'найди своих, чтобы войти'}</span>
               </div>
+            </div>
+
+            <div className={`reward-strip ${hasMatched ? 'unlocked' : 'locked'} ${rewardClaimed ? 'claimed' : ''}`}>
+              <div className="reward-orb">
+                <Trophy size={18} aria-hidden="true" />
+              </div>
+              <div>
+                <span>{rewardClaimed ? 'новый след' : hasMatched ? 'награда комнаты' : 'следующий шаг'}</span>
+                <strong>
+                  {rewardClaimed
+                    ? `+${rewardXp} XP · ${signalRarity}`
+                    : hasMatched
+                      ? `${radarMatches.length || 1} совпадения · ${resonanceScore} резонанс`
+                      : 'создай комнату и открой бонус'}
+                </strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRewardClaimed(true)}
+                disabled={!hasMatched || rewardClaimed}
+              >
+                {rewardLabel}
+              </button>
             </div>
 
             <div className="member-strip" aria-label="Участники комнаты">

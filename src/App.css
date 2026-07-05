@@ -342,7 +342,7 @@
 }
 
 .active-tab-title {
-  display: flex;
+  display: none;
   gap: 10px;
   align-items: center;
   margin-bottom: 14px;
@@ -509,9 +509,9 @@ h3 {
 
 .checkin-panel {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   width: min(540px, 100%);
-  margin-top: 26px;
+  margin-top: 20px;
 }
 
 .field {
@@ -585,6 +585,124 @@ small {
 
 .field-error {
   color: var(--coral);
+}
+
+.resonance-profile {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  color: rgba(255, 244, 223, 0.86);
+  background:
+    linear-gradient(145deg, rgba(223, 233, 208, 0.14), rgba(141, 233, 222, 0.055)),
+    rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(223, 233, 208, 0.18);
+  border-radius: 18px;
+}
+
+.resonance-core,
+.resonance-next {
+  display: flex;
+  align-items: center;
+}
+
+.resonance-core {
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.resonance-core div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.resonance-core span,
+.resonance-next {
+  color: rgba(247, 242, 231, 0.64);
+  font-size: 11px;
+  font-weight: 860;
+}
+
+.resonance-core span {
+  text-transform: uppercase;
+}
+
+.resonance-core strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resonance-core em {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  color: #34362f;
+  background: var(--cream-button);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  box-shadow:
+    0 10px 28px rgba(223, 233, 208, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 920;
+}
+
+.resonance-bar {
+  height: 7px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+}
+
+.resonance-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--mint), var(--teal), var(--gold));
+  border-radius: inherit;
+  box-shadow: 0 0 22px rgba(141, 233, 222, 0.32);
+  transition: width 180ms ease;
+}
+
+.resonance-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.resonance-tags span {
+  padding: 5px 8px;
+  color: rgba(247, 242, 231, 0.74);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.resonance-next {
+  gap: 7px;
+  min-width: 0;
+}
+
+.resonance-next svg {
+  flex: 0 0 auto;
+  color: var(--mint);
+}
+
+.resonance-next span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .active-tab-title {
+    display: flex;
+  }
 }
 
 .spark-deck {
@@ -1324,6 +1442,85 @@ small {
   gap: 2px;
 }
 
+.reward-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 10px;
+  color: rgba(247, 242, 231, 0.82);
+  background:
+    linear-gradient(145deg, rgba(246, 208, 152, 0.12), rgba(141, 233, 222, 0.045)),
+    rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(246, 208, 152, 0.16);
+  border-radius: 18px;
+}
+
+.reward-strip.locked {
+  opacity: 0.72;
+}
+
+.reward-strip.claimed {
+  border-color: rgba(223, 233, 208, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(223, 233, 208, 0.08),
+    0 16px 44px rgba(223, 233, 208, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.reward-orb {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: #34362f;
+  background: var(--cream-button);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 15px;
+  box-shadow:
+    0 12px 30px rgba(246, 208, 152, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.reward-strip div:not(.reward-orb) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reward-strip span {
+  color: rgba(247, 242, 231, 0.58);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.reward-strip strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.16;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reward-strip button {
+  min-height: 34px;
+  padding: 0 11px;
+  color: #34362f;
+  background: var(--cream-button);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 920;
+}
+
+.reward-strip button:disabled {
+  color: rgba(247, 242, 231, 0.46);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .member-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1877,6 +2074,8 @@ small {
 .progress-card,
 .feedback-row button,
 .safety-note,
+.resonance-profile,
+.reward-strip,
 .conversation-card,
 .spark-card,
 .intent,
@@ -2241,6 +2440,74 @@ textarea:focus {
 }
 
 @media (min-width: 1181px) {
+  .game-topbar {
+    margin-bottom: 12px;
+  }
+
+  .signal-stage {
+    min-height: 650px;
+  }
+
+  h1 {
+    font-size: clamp(42px, 3.7vw, 58px);
+  }
+
+  .stage-subcopy {
+    font-size: 14px;
+  }
+
+  .checkin-panel {
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .field {
+    gap: 6px;
+  }
+
+  input {
+    min-height: 44px;
+  }
+
+  textarea {
+    min-height: 70px;
+  }
+
+  .resonance-profile {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .resonance-core,
+  .resonance-bar {
+    grid-column: 1 / -1;
+  }
+
+  .resonance-tags {
+    min-width: 0;
+    overflow: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .resonance-tags span {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .resonance-next {
+    justify-content: flex-end;
+  }
+
+  .resonance-next span {
+    max-width: 210px;
+  }
+
+  .primary-cta {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
   .intent-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -2546,6 +2813,11 @@ textarea:focus {
     background-attachment: scroll;
   }
 
+  .active-tab-title,
+  .stage-subcopy {
+    display: none;
+  }
+
   .signal-stage {
     padding: 16px;
   }
@@ -2564,7 +2836,7 @@ textarea:focus {
   }
 
   textarea {
-    min-height: 76px;
+    min-height: 108px;
   }
 
   .intent {
@@ -2608,7 +2880,7 @@ textarea:focus {
   }
 
   .primary-cta {
-    min-height: 50px;
+    min-height: 42px;
   }
 
   .mobile-search-toast {
