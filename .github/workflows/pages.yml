@@ -40,6 +40,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: UI smoke built app
+        run: npm run smoke:ui
+        env:
+          SMOKE_UI_PATH: /ryadom-mvp/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
