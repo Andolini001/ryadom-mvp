@@ -13,6 +13,7 @@ import {
   Radio,
   Rocket,
   Send,
+  Share2,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -169,6 +170,58 @@ const conversationCards = [
   message: string
 }>
 
+const waveInviteTemplates: Record<
+  string,
+  {
+    state: string
+    thought: string
+    intent: Intent
+  }
+> = {
+  смысл: {
+    state: 'ищу смысл в шуме',
+    thought:
+      'Иногда кажется, что вокруг много движения, но мало настоящего смысла. Хочу найти человека, который тоже это замечает.',
+    intent: 'similar',
+  },
+  будущее: {
+    state: 'думаю о будущем',
+    thought:
+      'Меня цепляет мысль, что будущее собирается из маленьких выборов. Хочу спокойно разложить это с кем-то похожим.',
+    intent: 'support',
+  },
+  глубина: {
+    state: 'хочу глубины',
+    thought:
+      'Не хочется обычного small talk. Хочется разговора, после которого в голове становится чуть просторнее.',
+    intent: 'similar',
+  },
+  выбор: {
+    state: 'стою перед выбором',
+    thought:
+      'Есть ощущение, что решение уже рядом, но его нужно увидеть с другой стороны. Хочу поговорить без давления.',
+    intent: 'support',
+  },
+  парадокс: {
+    state: 'вижу противоречие',
+    thought:
+      'Внутри одновременно две правды, и обе почему-то важные. Интересно разобрать это с человеком, который любит думать глубже.',
+    intent: 'similar',
+  },
+  границы: {
+    state: 'ищу свои границы',
+    thought:
+      'Хочется понять, где я действительно выбираю себя, а где просто подстраиваюсь. Нужен честный разговор без оценок.',
+    intent: 'support',
+  },
+  наблюдение: {
+    state: 'есть странная мысль',
+    thought:
+      'В голове крутится наблюдение, которое сложно объяснить в обычном чате. Хочу найти того, кто тоже умеет замечать такие вещи.',
+    intent: 'similar',
+  },
+}
+
 const buildDemoReply = (body: string, topics: string[]) => {
   const normalized = body.toLocaleLowerCase('ru-RU')
 
@@ -259,6 +312,8 @@ function App() {
   const [feedback, setFeedback] = useState<UserFeedback>({ moodAfter: null, note: '' })
   const [telegramHandle, setTelegramHandle] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState('')
+  const [inviteStatus, setInviteStatus] = useState('')
+  const [waveNotice, setWaveNotice] = useState('')
   const [backendMode, setBackendMode] = useState<BackendMode>(
     isSupabaseConfigured ? 'connecting' : 'demo',
   )
@@ -318,6 +373,35 @@ function App() {
   const depthLabel =
     signal.depthScore >= 82 ? 'глубокая мысль' : signal.depthScore >= 64 ? 'есть крючок' : 'мягкий вход'
   const rewardLabel = rewardClaimed ? 'Награда собрана' : hasMatched ? 'Открыть награду' : 'Награда ждёт комнату'
+  const inviteWaveKey = thoughtLenses.find((lens) => lens in waveInviteTemplates) ?? 'наблюдение'
+  const inviteWaveLabel = inviteWaveKey === 'наблюдение' ? 'редкая мысль' : inviteWaveKey
+  const inviteUrl = useMemo(() => {
+    const url = new URL(window.location.href)
+    url.hash = ''
+    url.search = ''
+    url.searchParams.set('wave', inviteWaveKey)
+    url.searchParams.set('intent', intent)
+
+    return url.toString()
+  }, [intent, inviteWaveKey])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const wave = params.get('wave')
+    const incomingIntent = params.get('intent')
+    const template = wave ? waveInviteTemplates[wave] : null
+
+    if (!template) return
+
+    setStateText(template.state)
+    setThought(template.thought)
+    setIntent(
+      incomingIntent && Object.keys(intentLabels).includes(incomingIntent)
+        ? (incomingIntent as Intent)
+        : template.intent,
+    )
+    setWaveNotice(`Ты вошел в волну “${wave}”. Нажми “Найти своих”, чтобы попасть к похожим людям.`)
+  }, [])
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -669,6 +753,34 @@ function App() {
     setWaitlistStatus(`@${cleanHandle} добавлен в демо-очередь. Для MVP это уйдет в Telegram/CRM.`)
   }
 
+  const shareInvite = async () => {
+    const shareText = `Я нашел волну мыслей “${inviteWaveLabel}” в Рядом. Зайди и нажми “Найти своих” - возможно, попадем в похожую комнату.`
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Рядом',
+          text: shareText,
+          url: inviteUrl,
+        })
+        setInviteStatus('Приглашение отправлено. +25 XP за быстрый вход друга.')
+        return
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${shareText}\n${inviteUrl}`)
+        setInviteStatus('Ссылка скопирована. Отправь ее другу, чтобы зайти в одну волну.')
+        return
+      }
+
+      setInviteStatus(`Скопируй вручную: ${inviteUrl}`)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+
+      setInviteStatus(`Скопируй вручную: ${inviteUrl}`)
+    }
+  }
+
   return (
     <main className={`app-shell tab-${activeTab}`}>
       <div className="world-backdrop" aria-hidden="true" />
@@ -758,6 +870,9 @@ function App() {
               <Flame size={16} aria-hidden="true" />
               3
             </span>
+            <button type="button" onClick={shareInvite} aria-label="Поделиться Рядом" title="Поделиться Рядом">
+              <Share2 size={17} aria-hidden="true" />
+            </button>
             <button type="button" onClick={() => setActiveTab('missions')} aria-label="Ранний доступ">
               <Bell size={17} aria-hidden="true" />
             </button>
@@ -781,6 +896,16 @@ function App() {
             </div>
 
             <div className="checkin-panel">
+              {waveNotice && (
+                <div className="wave-notice" role="status" aria-live="polite">
+                  <Share2 size={18} aria-hidden="true" />
+                  <div>
+                    <strong>Приглашение принято</strong>
+                    <span>{waveNotice}</span>
+                  </div>
+                </div>
+              )}
+
               <label className="field">
                 <span>Состояние и мысли короткой фразой</span>
                 <input
@@ -1050,6 +1175,21 @@ function App() {
                 ))}
               </div>
               <em>{signal.depthScore} глубина</em>
+            </div>
+
+            <div className={`invite-strip ${inviteStatus ? 'copied' : ''}`}>
+              <div className="invite-orb">
+                <Share2 size={18} aria-hidden="true" />
+              </div>
+              <div>
+                <span>пригласить в волну</span>
+                <strong>{inviteWaveLabel} · +25 XP за быстрый вход</strong>
+                <p>Друг откроет похожую стартовую тему без твоего личного текста.</p>
+                {inviteStatus && <em>{inviteStatus}</em>}
+              </div>
+              <button type="button" onClick={shareInvite}>
+                Поделиться
+              </button>
             </div>
 
             <div className="member-strip" aria-label="Участники комнаты">
