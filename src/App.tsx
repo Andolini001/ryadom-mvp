@@ -424,6 +424,10 @@ function App() {
       ? 'цепочка закрыта'
       : `${roundMovesLeft} ${roundMoveWord} до награды`
     : 'откроется после матча'
+  const totalRoundXp = roomRounds.reduce((sum, round) => sum + round.xp, 0)
+  const roomComplete = hasMatched && completedRoundCount === roomRounds.length
+  const roomInsight = `${thoughtLenses[0] ?? 'наблюдение'} + ${radarTopic}: здесь есть мысль, которую стоит продолжить с похожими людьми.`
+  const roomTraceReward = rewardXp + totalRoundXp
   const inviteWaveKey = thoughtLenses.find((lens) => lens in waveInviteTemplates) ?? 'наблюдение'
   const inviteWaveLabel = inviteWaveKey === 'наблюдение' ? 'редкая мысль' : inviteWaveKey
   const inviteUrl = useMemo(() => {
@@ -783,6 +787,23 @@ function App() {
             : 'Оценка осталась локально из-за ошибки Supabase.',
         )
       })
+  }
+
+  const saveRoomTrace = () => {
+    if (!roomComplete) return
+
+    const nextFeedback: UserFeedback = {
+      moodAfter: feedback.moodAfter ?? 'lighter',
+      note: feedback.note || `След комнаты #${roomCode}: ${roomInsight}`,
+    }
+
+    setRewardClaimed(true)
+    updateFeedback(nextFeedback)
+    setBackendNotice(
+      backendMode === 'live'
+        ? 'Сохраняем след комнаты в живой сессии.'
+        : 'След комнаты сохранен локально. В live mode он уйдет в Supabase.',
+    )
   }
 
   const joinWaitlist = async (event: FormEvent<HTMLFormElement>) => {
@@ -1381,6 +1402,46 @@ function App() {
               </button>
             </form>
 
+            <div className={`room-close-card ${roomComplete ? 'ready' : 'locked'}`} aria-live="polite">
+              <div className="room-close-head">
+                <span>
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  Финал комнаты
+                </span>
+                <strong>{roomComplete ? 'Инсайт собран' : `${completedRoundCount} / ${roomRounds.length} раунда`}</strong>
+              </div>
+
+              <p>
+                {roomComplete
+                  ? roomInsight
+                  : 'Дойдите до третьего раунда, чтобы сохранить след разговора и открыть итоговую награду.'}
+              </p>
+
+              <div className="room-close-stats">
+                <span>
+                  <Trophy size={14} aria-hidden="true" />
+                  +{roomTraceReward} XP
+                </span>
+                <span>
+                  <Users size={14} aria-hidden="true" />
+                  {room.members.length} рядом
+                </span>
+                <span>
+                  <Sparkles size={14} aria-hidden="true" />
+                  {signalRarity}
+                </span>
+              </div>
+
+              <div className="room-close-actions">
+                <button type="button" onClick={saveRoomTrace} disabled={!roomComplete || rewardClaimed}>
+                  {rewardClaimed ? 'След сохранен' : 'Сохранить след'}
+                </button>
+                <button type="button" onClick={() => setActiveTab('signals')}>
+                  Найти еще
+                </button>
+              </div>
+            </div>
+
             <div className="room-actions">
               <button type="button" onClick={() => addReport('Пожаловаться на сообщение')}>
                 <AlertTriangle size={16} aria-hidden="true" />
@@ -1397,7 +1458,7 @@ function App() {
         <section className="room-strip" aria-label="Активные комнаты">
           <div className="strip-head">
             <h2>Активные комнаты</h2>
-            <button type="button" onClick={() => setActiveTab('signals')}>карта сигналов</button>
+            <button type="button" onClick={() => setActiveTab('signals')}>сигналы</button>
           </div>
 
           <div className="room-cards">
