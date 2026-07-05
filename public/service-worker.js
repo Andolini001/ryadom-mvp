@@ -1,5 +1,6 @@
 const CACHE_NAME = 'ryadom-mvp-v1'
-const CORE_ASSETS = ['/', '/manifest.webmanifest', '/favicon.svg']
+const APP_SCOPE = self.registration.scope
+const CORE_ASSETS = [APP_SCOPE, `${APP_SCOPE}manifest.webmanifest`, `${APP_SCOPE}favicon.svg`]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -31,6 +32,6 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
         return response
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/'))),
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match(APP_SCOPE))),
   )
 })
