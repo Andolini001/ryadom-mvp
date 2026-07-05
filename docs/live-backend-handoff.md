@@ -4,7 +4,7 @@
 
 https://andolini001.github.io/ryadom-mvp/
 
-Production build подключается к Supabase через GitHub Actions secrets. Если Supabase Anonymous Auth выключен, приложение использует гостевой live-режим: браузер создает локальный гостевой токен, а база принимает только ограниченные RPC-вызовы для комнат, сообщений, репортов, feedback и waitlist.
+Production build подключается к Supabase через GitHub Actions secrets. Сейчас приложение использует гостевой live-режим: браузер создает локальный гостевой токен, а база принимает только ограниченные RPC-вызовы для комнат, сообщений, репортов, feedback и waitlist.
 
 ## Current State
 
@@ -19,8 +19,9 @@ Production build подключается к Supabase через GitHub Actions 
 
 - Do not put a service role key into frontend or GitHub Pages secrets.
 - Public frontend uses only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+- `VITE_SUPABASE_USE_AUTH=false` keeps the public app on the guest RPC path and avoids failed Anonymous Auth requests in the browser console.
 - Guest live data is isolated behind security-definer RPC functions and RLS-enabled tables.
-- If Anonymous Sign-In is enabled later in Supabase Auth settings, the app will first try the stricter authenticated path and fall back to guest RPC only if anonymous auth fails.
+- If Anonymous Sign-In is enabled later in Supabase Auth settings, set `VITE_SUPABASE_USE_AUTH=true` to try the stricter authenticated path first and fall back to guest RPC if anonymous auth fails.
 
 ## Activation Steps
 
@@ -30,6 +31,7 @@ Production build подключается к Supabase через GitHub Actions 
 4. GitHub repository secrets must be present:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - Optional: `VITE_SUPABASE_USE_AUTH=true` only after enabling Anonymous Sign-In in Supabase Auth.
 5. Re-run the `Deploy GitHub Pages` workflow after code or secret changes.
 6. Open the public site and confirm the top status says `Живой backend`.
 

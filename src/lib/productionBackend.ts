@@ -29,8 +29,9 @@ type ProductionProfile = {
 
 const palette = ['#d36f52', '#2f7d74', '#6f7d5f', '#8c6a9e', '#bb7d43', '#4c8b85']
 const guestStorageKey = 'ryadom.guest-session.v1'
+const preferAnonymousAuth = import.meta.env.VITE_SUPABASE_USE_AUTH === 'true'
 let cachedProfile: ProductionProfile | null = null
-let anonymousAuthUnavailable = false
+let anonymousAuthUnavailable = !preferAnonymousAuth
 
 const requireClient = () => {
   if (!supabase) {
