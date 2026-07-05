@@ -890,7 +890,7 @@ function App() {
               <p className="quest-label">Чек-ин за 30 секунд</p>
               <h1>Что сейчас внутри?</h1>
               <p className="stage-subcopy">
-                Напиши короткий сигнал. Карта найдет людей с похожим контекстом и откроет
+                Напиши короткий сигнал. Алгоритм найдет людей с похожим контекстом и откроет
                 спокойную комнату.
               </p>
             </div>
@@ -1080,7 +1080,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="signal-map-art" aria-hidden="true">
+              <div className="signal-map-art" aria-label="Подходящие сигналы">
                 <div className="signal-links">
                   <i className="link-0" />
                   <i className="link-1" />
@@ -1097,9 +1097,11 @@ function App() {
                   ))}
                 </div>
                 {signalNodes.map((match, index) => (
-                  <span
+                  <button
                     className={`signal-node node-${index}`}
                     key={match.id}
+                    type="button"
+                    onClick={() => openDemoRoom(match)}
                     style={{
                       borderColor: match.user.hue,
                       boxShadow: `0 0 42px ${match.user.hue}66`,
@@ -1110,7 +1112,11 @@ function App() {
                     </b>
                     <em>{match.state}</em>
                     <small>{match.score}</small>
-                  </span>
+                    <span className="signal-node-detail">
+                      {match.reasons[0] ?? `${match.minutesAgo} мин назад`}
+                    </span>
+                    <span className="signal-node-action">Войти</span>
+                  </button>
                 ))}
               </div>
             </div>
