@@ -1029,7 +1029,7 @@ function App() {
                 placeholder="Напиши сообщение..."
                 aria-label="Сообщение в комнату"
               />
-              <button type="submit" disabled={isSending}>
+              <button type="submit" disabled={isSending} aria-label="Отправить сообщение" title="Отправить сообщение">
                 <Send size={17} aria-hidden="true" />
               </button>
             </form>
