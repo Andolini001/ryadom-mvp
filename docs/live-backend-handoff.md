@@ -4,41 +4,43 @@
 
 https://andolini001.github.io/ryadom-mvp/
 
-Сейчас он работает в demo-mode, потому что production build не получает Supabase env. Чтобы друзья могли реально попадать в общие комнаты и видеть сообщения друг друга, нужно подключить активный Supabase project.
+Production build подключается к Supabase через GitHub Actions secrets. Если Supabase Anonymous Auth выключен, приложение использует гостевой live-режим: браузер создает локальный гостевой токен, а база принимает только ограниченные RPC-вызовы для комнат, сообщений, репортов, feedback и waitlist.
 
 ## Current State
 
 - GitHub repo: `Andolini001/ryadom-mvp`
 - Pages URL: `https://andolini001.github.io/ryadom-mvp/`
 - Pages workflow: `.github/workflows/pages.yml`
-- Existing Supabase project discovered through connector: `zfbgkhsigjlphdjamehf`
-- Project status at last check: `INACTIVE`
+- Active Supabase project: `wolhpchxdkkblkyavyft`
+- Project URL: `https://wolhpchxdkkblkyavyft.supabase.co`
+- Backend mode: guest live fallback, because Supabase Anonymous Sign-In is disabled by default in the new project.
 
-## What Needs Approval
+## Backend Notes
 
-Before changing Supabase account state, get explicit approval to restore or use the inactive project `zfbgkhsigjlphdjamehf`.
-
-Do not put a service role key into frontend or GitHub Pages secrets.
+- Do not put a service role key into frontend or GitHub Pages secrets.
+- Public frontend uses only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+- Guest live data is isolated behind security-definer RPC functions and RLS-enabled tables.
+- If Anonymous Sign-In is enabled later in Supabase Auth settings, the app will first try the stricter authenticated path and fall back to guest RPC only if anonymous auth fails.
 
 ## Activation Steps
 
-1. Restore or create an active Supabase project.
-2. Enable anonymous sign-ins in Supabase Auth.
-3. Run `supabase/migrations/20260703143000_initial_real_mvp.sql`.
-4. Get the project API URL and a publishable key.
-5. Add GitHub repository secrets:
+1. Active Supabase project exists: `wolhpchxdkkblkyavyft`.
+2. Initial migration applied: `supabase/migrations/20260703143000_initial_real_mvp.sql`.
+3. Guest live fallback migration applied: `supabase/migrations/20260705123000_guest_live_backend.sql`.
+4. GitHub repository secrets must be present:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
-6. Re-run the `Deploy GitHub Pages` workflow.
-7. Open the public site and confirm the top status says `Живой backend`.
+5. Re-run the `Deploy GitHub Pages` workflow after code or secret changes.
+6. Open the public site and confirm the top status says `Живой backend`.
 
 ## Verification Checklist
 
 - Public page returns 200.
 - `npm run smoke:public -- https://andolini001.github.io/ryadom-mvp/` passes.
-- Check-in creates a Supabase `check_ins` row.
-- `Найти своих` creates or joins a room through `create_room_for_checkin`.
-- Sent messages are written to `messages`.
-- A second browser session receives the message through Realtime.
-- Report creates `reports` and `safety_events` rows.
-- Waitlist saves a row to `waitlist_entries`.
+- Guest check-in creates a `guest_check_ins` row.
+- First guest creates a `guest_rooms` room.
+- Second guest with similar topics joins the same room through `create_guest_room_for_checkin`.
+- Sent messages are written to `guest_messages`.
+- Another browser session reads room messages through `load_guest_messages` polling.
+- Report creates `guest_reports` and `guest_safety_events` rows.
+- Waitlist saves a row to `guest_waitlist_entries`.

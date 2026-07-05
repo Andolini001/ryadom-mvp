@@ -19,7 +19,18 @@ type BackendRoomResponse = {
   candidates?: RawRecord[]
 }
 
+type ProductionProfile = {
+  id: string
+  alias: string
+  hue: string
+  mode: 'authenticated' | 'guest'
+  guestToken?: string
+}
+
 const palette = ['#d36f52', '#2f7d74', '#6f7d5f', '#8c6a9e', '#bb7d43', '#4c8b85']
+const guestStorageKey = 'ryadom.guest-session.v1'
+let cachedProfile: ProductionProfile | null = null
+let anonymousAuthUnavailable = false
 
 const requireClient = () => {
   if (!supabase) {
@@ -33,6 +44,8 @@ const text = (value: unknown, fallback = '') => (typeof value === 'string' ? val
 const numberValue = (value: unknown, fallback = 0) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
 const stringArray = (value: unknown) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
+const rawArray = (value: unknown): RawRecord[] =>
+  Array.isArray(value) ? value.filter((item): item is RawRecord => Boolean(item) && typeof item === 'object') : []
 
 const formatTime = (value: unknown) => {
   const raw = text(value)
@@ -46,32 +59,135 @@ const formatTime = (value: unknown) => {
 
 const buildAlias = (userId: string) => `гость ${userId.slice(0, 4)}`
 
-const currentUserProfile = async () => {
-  const client = requireClient()
-  const { data: sessionData, error: sessionError } = await client.auth.getSession()
+const makeGuestId = (): string =>
+  globalThis.crypto?.randomUUID?.() ?? `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0').slice(-12)}`
 
-  if (sessionError) throw sessionError
+const readGuestProfile = (): ProductionProfile => {
+  if (cachedProfile?.mode === 'guest') return cachedProfile
 
-  if (sessionData.session?.user) {
-    return {
-      id: sessionData.session.user.id,
-      alias: buildAlias(sessionData.session.user.id),
-      hue: palette[sessionData.session.user.id.charCodeAt(0) % palette.length],
+  const fallbackId = makeGuestId()
+  let id: string = fallbackId
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = window.localStorage.getItem(guestStorageKey)
+      const parsed = stored ? (JSON.parse(stored) as { id?: unknown }) : null
+
+      if (typeof parsed?.id === 'string') {
+        id = parsed.id
+      } else {
+        window.localStorage.setItem(guestStorageKey, JSON.stringify({ id }))
+      }
+    } catch {
+      id = fallbackId
     }
   }
 
-  const { data, error } = await client.auth.signInAnonymously()
-  if (error) throw error
-  if (!data.user) throw new Error('Anonymous sign-in did not return a user')
-
-  return {
-    id: data.user.id,
-    alias: buildAlias(data.user.id),
-    hue: palette[data.user.id.charCodeAt(0) % palette.length],
+  cachedProfile = {
+    id,
+    alias: buildAlias(id),
+    hue: palette[id.charCodeAt(0) % palette.length],
+    mode: 'guest',
+    guestToken: id,
   }
+
+  return cachedProfile
+}
+
+const currentUserProfile = async (): Promise<ProductionProfile> => {
+  const client = requireClient()
+
+  if (cachedProfile?.mode === 'authenticated') return cachedProfile
+
+  if (!anonymousAuthUnavailable) {
+    try {
+      const { data: sessionData, error: sessionError } = await client.auth.getSession()
+
+      if (sessionError) throw sessionError
+
+      if (sessionData.session?.user) {
+        cachedProfile = {
+          id: sessionData.session.user.id,
+          alias: buildAlias(sessionData.session.user.id),
+          hue: palette[sessionData.session.user.id.charCodeAt(0) % palette.length],
+          mode: 'authenticated',
+        }
+
+        return cachedProfile
+      }
+
+      const { data, error } = await client.auth.signInAnonymously()
+      if (error) throw error
+      if (!data.user) throw new Error('Anonymous sign-in did not return a user')
+
+      cachedProfile = {
+        id: data.user.id,
+        alias: buildAlias(data.user.id),
+        hue: palette[data.user.id.charCodeAt(0) % palette.length],
+        mode: 'authenticated',
+      }
+
+      return cachedProfile
+    } catch {
+      anonymousAuthUnavailable = true
+    }
+  }
+
+  return readGuestProfile()
 }
 
 export const ensureProductionSession = currentUserProfile
+
+const mapRoomResponse = (result: BackendRoomResponse): {
+  room: Room | null
+  candidates: MatchCandidate[]
+  safetyBlocked: boolean
+} => {
+  if (result.status === 'safety_blocked') {
+    return { room: null, candidates: [], safetyBlocked: true }
+  }
+
+  const rawRoom = result.room ?? {}
+  const room: Room = {
+    id: text(rawRoom.id, `room-${Date.now()}`),
+    title: text(rawRoom.title, 'Комната: рядом по мысли'),
+    timerMinutes: numberValue(rawRoom.timer_minutes, 25),
+    members: rawArray(result.members).map(mapMember),
+    messages: rawArray(result.messages).map(mapMessage),
+  }
+
+  return {
+    room,
+    candidates: rawArray(result.candidates).map(mapCandidate),
+    safetyBlocked: false,
+  }
+}
+
+const mapSafetyEvents = (items: RawRecord[]): SafetyEvent[] =>
+  items.map((item) => ({
+    id: text(item.id),
+    label: text(item.label),
+    source: text(item.source),
+    status:
+      item.status === 'watching' || item.status === 'resolved' ? item.status : 'new',
+    severity:
+      item.severity === 'high' || item.severity === 'medium' ? item.severity : 'low',
+    detail: text(item.detail),
+  }))
+
+const guestToken = (profile: ProductionProfile) => {
+  if (!profile.guestToken) {
+    throw new Error('Guest token is missing')
+  }
+
+  return profile.guestToken
+}
+
+const authPayload = (profile: ProductionProfile) => ({
+  id: profile.id,
+  alias: profile.alias,
+  hue: profile.hue,
+})
 
 const mapMember = (raw: RawRecord): User => ({
   id: text(raw.id),
@@ -126,6 +242,23 @@ export const createRoomFromSignal = async (
 }> => {
   const client = requireClient()
   const profile = await currentUserProfile()
+  const payload = authPayload(profile)
+
+  if (profile.mode === 'guest') {
+    const { data, error } = await client.rpc('create_guest_room_for_checkin', {
+      p_guest_token: guestToken(profile),
+      p_state: signal.state,
+      p_thought: signal.thought,
+      p_intent: signal.intent,
+      p_topics: signal.topics,
+      p_safety_level: signal.safetyLevel,
+      p_alias: payload.alias,
+      p_hue: payload.hue,
+    })
+
+    if (error) throw error
+    return mapRoomResponse(data as BackendRoomResponse)
+  }
 
   const { data, error } = await client.rpc('create_room_for_checkin', {
     p_state: signal.state,
@@ -133,36 +266,28 @@ export const createRoomFromSignal = async (
     p_intent: signal.intent,
     p_topics: signal.topics,
     p_safety_level: signal.safetyLevel,
-    p_alias: profile.alias,
-    p_hue: profile.hue,
+    p_alias: payload.alias,
+    p_hue: payload.hue,
   })
 
   if (error) throw error
-
-  const result = data as BackendRoomResponse
-  if (result.status === 'safety_blocked') {
-    return { room: null, candidates: [], safetyBlocked: true }
-  }
-
-  const rawRoom = result.room ?? {}
-  const room: Room = {
-    id: text(rawRoom.id, `room-${Date.now()}`),
-    title: text(rawRoom.title, 'Комната: рядом по мысли'),
-    timerMinutes: numberValue(rawRoom.timer_minutes, 25),
-    members: (result.members ?? []).map(mapMember),
-    messages: (result.messages ?? []).map(mapMessage),
-  }
-
-  return {
-    room,
-    candidates: (result.candidates ?? []).map(mapCandidate),
-    safetyBlocked: false,
-  }
+  return mapRoomResponse(data as BackendRoomResponse)
 }
 
 export const sendProductionMessage = async (roomId: string, body: string) => {
   const client = requireClient()
   const profile = await currentUserProfile()
+
+  if (profile.mode === 'guest') {
+    const { data, error } = await client.rpc('send_guest_message', {
+      p_guest_token: guestToken(profile),
+      p_room_id: roomId,
+      p_body: body,
+    })
+
+    if (error) throw error
+    return mapMessage(data as RawRecord)
+  }
 
   const { data, error } = await client
     .from('messages')
@@ -185,6 +310,29 @@ export const subscribeToRoomMessages = (
   onMessage: (message: Message) => void,
 ) => {
   const client = requireClient()
+  const profile = cachedProfile
+
+  if (profile?.mode === 'guest') {
+    let stopped = false
+    const pollMessages = async () => {
+      const { data, error } = await client.rpc('load_guest_messages', {
+        p_guest_token: guestToken(profile),
+        p_room_id: roomId,
+      })
+
+      if (stopped || error) return
+      rawArray(data).map(mapMessage).forEach(onMessage)
+    }
+
+    void pollMessages()
+    const timer = window.setInterval(() => void pollMessages(), 1800)
+
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }
+
   const channel = client
     .channel(`room:${roomId}:messages`)
     .on(
@@ -207,6 +355,17 @@ export const subscribeToRoomMessages = (
 export const createProductionReport = async (roomId: string, reason: string) => {
   const client = requireClient()
   const profile = await currentUserProfile()
+
+  if (profile.mode === 'guest') {
+    const { error } = await client.rpc('create_guest_report', {
+      p_guest_token: guestToken(profile),
+      p_room_id: roomId,
+      p_reason: reason,
+    })
+
+    if (error) throw error
+    return
+  }
 
   const { error: reportError } = await client.from('reports').insert({
     room_id: roomId,
@@ -235,6 +394,19 @@ export const saveProductionFeedback = async (
 
   const client = requireClient()
   const profile = await currentUserProfile()
+
+  if (profile.mode === 'guest') {
+    const { error } = await client.rpc('save_guest_feedback', {
+      p_guest_token: guestToken(profile),
+      p_room_id: roomId,
+      p_mood_after: feedback.moodAfter,
+      p_note: feedback.note.trim(),
+    })
+
+    if (error) throw error
+    return
+  }
+
   const { error } = await client.from('user_feedback').upsert(
     {
       room_id: roomId,
@@ -250,6 +422,17 @@ export const saveProductionFeedback = async (
 export const joinProductionWaitlist = async (telegramHandle: string) => {
   const client = requireClient()
   const profile = await currentUserProfile()
+
+  if (profile.mode === 'guest') {
+    const { error } = await client.rpc('join_guest_waitlist', {
+      p_guest_token: guestToken(profile),
+      p_telegram_handle: telegramHandle,
+    })
+
+    if (error) throw error
+    return
+  }
+
   const { error } = await client.from('waitlist_entries').insert({
     user_id: profile.id,
     telegram_handle: telegramHandle,
@@ -260,7 +443,16 @@ export const joinProductionWaitlist = async (telegramHandle: string) => {
 
 export const loadProductionSafetyEvents = async (): Promise<SafetyEvent[]> => {
   const client = requireClient()
-  await currentUserProfile()
+  const profile = await currentUserProfile()
+
+  if (profile.mode === 'guest') {
+    const { data, error } = await client.rpc('load_guest_safety_events', {
+      p_guest_token: guestToken(profile),
+    })
+
+    if (error) throw error
+    return mapSafetyEvents(rawArray(data))
+  }
 
   const { data, error } = await client
     .from('safety_events')
@@ -270,14 +462,5 @@ export const loadProductionSafetyEvents = async (): Promise<SafetyEvent[]> => {
 
   if (error) throw error
 
-  return (data ?? []).map((item) => ({
-    id: text(item.id),
-    label: text(item.label),
-    source: text(item.source),
-    status:
-      item.status === 'watching' || item.status === 'resolved' ? item.status : 'new',
-    severity:
-      item.severity === 'high' || item.severity === 'medium' ? item.severity : 'low',
-    detail: text(item.detail),
-  }))
+  return mapSafetyEvents(rawArray(data))
 }

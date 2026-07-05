@@ -297,11 +297,18 @@ function App() {
     let cancelled = false
 
     ensureProductionSession()
-      .then(() => loadProductionSafetyEvents())
-      .then((events) => {
+      .then(async (profile) => ({
+        profile,
+        events: await loadProductionSafetyEvents(),
+      }))
+      .then(({ profile, events }) => {
         if (cancelled) return
         setBackendMode('live')
-        setBackendNotice('Живой backend подключен: анонимная сессия, RLS и realtime готовы.')
+        setBackendNotice(
+          profile.mode === 'guest'
+            ? 'Живой backend подключен: гостевой вход без регистрации, комнаты и сообщения сохраняются в Supabase.'
+            : 'Живой backend подключен: анонимная сессия, RLS и realtime готовы.',
+        )
         if (events.length > 0) {
           setSafetyEvents(events)
         }
@@ -419,7 +426,7 @@ function App() {
           setSelectedConversationCardId(null)
           setHasMatched(true)
           setActiveTab('room')
-          setBackendNotice('Комната создана в Supabase. Сообщения идут через realtime.')
+          setBackendNotice('Комната создана в Supabase. Сообщения идут через живой backend.')
           return
         }
       } catch (error: unknown) {
