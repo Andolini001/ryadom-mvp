@@ -9,6 +9,8 @@ export type MoodSignal = {
   language: 'ru'
   ageZone: '18-30'
   topics: string[]
+  lenses: string[]
+  depthScore: number
   safetyLevel: SafetyLevel
 }
 

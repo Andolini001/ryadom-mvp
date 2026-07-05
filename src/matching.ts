@@ -18,6 +18,15 @@ const topicLexicon: Array<[string, string[]]> = [
   ['глубина', ['глубин', 'small talk', 'простор', 'разговор']],
 ]
 
+const thoughtLensLexicon: Array<[string, string[]]> = [
+  ['смысл', ['смысл', 'зачем', 'почему', 'настоящ', 'ценност', 'жизнь']],
+  ['выбор', ['выбор', 'решен', 'можно ли', 'если', 'осознан', 'путь']],
+  ['парадокс', ['вроде', 'одновременно', 'странно', 'как будто', 'с одной стороны']],
+  ['будущее', ['будущ', 'время', 'потом', 'строим', 'мечт', 'кем стану']],
+  ['глубина', ['глубин', 'по-настоящ', 'думать вслух', 'простор', 'вопрос']],
+  ['границы', ['границ', 'давлен', 'не хочу', 'дергают', 'объяснять']],
+]
+
 const crisisPhrases = [
   'хочу умереть',
   'суицид',
@@ -58,6 +67,34 @@ export const inferTopics = (state: string, thought: string) => {
   return [...new Set(topics)].slice(0, 5)
 }
 
+export const inferThoughtLenses = (state: string, thought: string) => {
+  const text = `${state} ${thought}`.toLocaleLowerCase('ru-RU')
+  const lenses = thoughtLensLexicon
+    .filter(([, stems]) => stems.some((stem) => text.includes(stem)))
+    .map(([lens]) => lens)
+
+  return [...new Set(lenses)].slice(0, 4)
+}
+
+export const calculateDepthScore = (state: string, thought: string) => {
+  const text = `${state} ${thought}`
+  const words = tokenize(text)
+  const lenses = inferThoughtLenses(state, thought)
+  const hasQuestion = /[?？]/u.test(text) || text.toLocaleLowerCase('ru-RU').includes('можно ли')
+  const hasTension = [' но ', 'вроде', 'одновременно', 'как будто'].some((item) =>
+    ` ${text.toLocaleLowerCase('ru-RU')} `.includes(item),
+  )
+
+  return Math.min(
+    99,
+    24 +
+      Math.min(words.length, 42) +
+      lenses.length * 9 +
+      (hasQuestion ? 12 : 0) +
+      (hasTension ? 10 : 0),
+  )
+}
+
 export const assessSafety = (state: string, thought: string): SafetyLevel => {
   const text = `${state} ${thought}`
 
@@ -80,15 +117,22 @@ export const buildMoodSignal = (
   state: string,
   thought: string,
   intent: Intent,
-): MoodSignal => ({
-  state: state.trim(),
-  thought: thought.trim(),
-  intent,
-  language: 'ru',
-  ageZone: '18-30',
-  topics: inferTopics(state, thought),
-  safetyLevel: assessSafety(state, thought),
-})
+): MoodSignal => {
+  const cleanState = state.trim()
+  const cleanThought = thought.trim()
+
+  return {
+    state: cleanState,
+    thought: cleanThought,
+    intent,
+    language: 'ru',
+    ageZone: '18-30',
+    topics: inferTopics(cleanState, cleanThought),
+    lenses: inferThoughtLenses(cleanState, cleanThought),
+    depthScore: calculateDepthScore(cleanState, cleanThought),
+    safetyLevel: assessSafety(cleanState, cleanThought),
+  }
+}
 
 const intentCompatibility = (source: Intent, candidate: Intent) => {
   if (source === candidate) return 22
@@ -104,15 +148,24 @@ const scoreCandidate = (signal: MoodSignal, candidate: CheckIn): MatchCandidate 
     candidate.thought.toLocaleLowerCase('ru-RU').includes(token),
   ).length
   const topicOverlap = signal.topics.filter((topic) => candidate.topics.includes(topic))
+  const candidateLenses = inferThoughtLenses(candidate.state, candidate.thought)
+  const lensOverlap = signal.lenses.filter((lens) => candidateLenses.includes(lens))
+  const depthAffinity = Math.max(
+    0,
+    10 - Math.abs(signal.depthScore - calculateDepthScore(candidate.state, candidate.thought)) / 10,
+  )
   const freshness = Math.max(0, 16 - candidate.minutesAgo)
   const score =
     topicOverlap.length * 24 +
+    lensOverlap.length * 18 +
     tokenOverlap * 3 +
     intentCompatibility(signal.intent, candidate.intent) +
+    depthAffinity +
     freshness +
     candidate.user.trustScore / 10
 
   const reasons = [
+    ...lensOverlap.map((lens) => `похожий стиль мысли: ${lens}`),
     ...topicOverlap.map((topic) => `похоже по теме: ${topic}`),
     candidate.intent === signal.intent ? 'совпало намерение' : 'совместимое намерение',
     candidate.minutesAgo <= 10 ? 'человек недавно рядом' : 'подходит по контексту',

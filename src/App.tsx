@@ -134,31 +134,31 @@ const sparkDeck = [
 
 const conversationCards = [
   {
-    id: 'real',
-    title: 'что настоящее?',
-    tone: 'глубина',
+    id: 'hypothesis',
+    title: 'собрать гипотезу',
+    tone: 'мысль',
+    xp: 20,
+    body: 'Превращает ощущение в идею для обсуждения.',
+    message:
+      'Моя гипотеза такая: за этой мыслью прячется не проблема, а важный вопрос. Какой вопрос ты здесь слышишь?',
+  },
+  {
+    id: 'reverse',
+    title: 'проверить наоборот',
+    tone: 'парадокс',
     xp: 18,
-    body: 'Отделяет живую мысль от шума вокруг.',
+    body: 'Добавляет азарт: а вдруг правда с другой стороны.',
     message:
-      'Мне интересно: что в этой теме для тебя сейчас самое настоящее, а что просто шум вокруг?',
+      'А что если все наоборот: не я застрял в этой мысли, а она показывает, куда мне давно пора посмотреть?',
   },
   {
-    id: 'mirror',
-    title: 'где совпали?',
-    tone: 'резонанс',
-    xp: 14,
-    body: 'Помогает быстро найти общий опыт.',
+    id: 'image',
+    title: 'найти образ',
+    tone: 'метафора',
+    xp: 16,
+    body: 'Помогает говорить глубоко, но без тяжести.',
     message:
-      'У кого было что-то похожее? Хочу понять, где мы совпадаем, а где чувствуем по-разному.',
-  },
-  {
-    id: 'honest',
-    title: 'один честный факт',
-    tone: 'искренность',
-    xp: 12,
-    body: 'Мягкий старт без идеальной формулировки.',
-    message:
-      'Один честный факт про меня сейчас: я хочу говорить не идеально, а по-настоящему.',
+      'Если бы эта мысль была местом, это было бы какое место? Мне кажется, через образ ее легче понять.',
   },
 ] satisfies Array<{
   id: string
@@ -171,6 +171,18 @@ const conversationCards = [
 
 const buildDemoReply = (body: string, topics: string[]) => {
   const normalized = body.toLocaleLowerCase('ru-RU')
+
+  if (normalized.includes('гипотез') || normalized.includes('вопрос')) {
+    return 'Я бы сформулировал вопрос так: что во мне просит внимания, но пока говорит через усталость или шум? Интересно, у тебя похоже или совсем иначе?'
+  }
+
+  if (normalized.includes('наоборот') || normalized.includes('другой стороны')) {
+    return 'Классный поворот. Если смотреть наоборот, то это не тупик, а сигнал: какая-то часть тебя уже не хочет старого способа жить или думать.'
+  }
+
+  if (normalized.includes('местом') || normalized.includes('образ')) {
+    return 'Для меня это было бы место поздно вечером, где свет еще горит, но людей почти нет. Не страшно, скорее честно и чуть пусто.'
+  }
 
   if (normalized.includes('настоя') || topics.includes('смысл')) {
     return 'Для меня настоящее там, где после фразы внутри становится чуть тише. Похоже, мы оба сейчас ищем не ответ, а точку опоры.'
@@ -302,6 +314,9 @@ function App() {
   const leadingMatch = radarMatches[0]
   const signalRarity =
     resonanceScore >= 82 ? 'редкий резонанс' : resonanceScore >= 62 ? 'сильный сигнал' : 'мягкий старт'
+  const thoughtLenses = signal.lenses.length > 0 ? signal.lenses.slice(0, 3) : ['наблюдение']
+  const depthLabel =
+    signal.depthScore >= 82 ? 'глубокая мысль' : signal.depthScore >= 64 ? 'есть крючок' : 'мягкий вход'
   const rewardLabel = rewardClaimed ? 'Награда собрана' : hasMatched ? 'Открыть награду' : 'Награда ждёт комнату'
 
   useEffect(() => {
@@ -793,8 +808,8 @@ function App() {
               <div className="resonance-profile" aria-live="polite">
                 <div className="resonance-core">
                   <div>
-                    <span>{signalRarity}</span>
-                    <strong>{resonanceScore} резонанс</strong>
+                    <span>{signalRarity} · {depthLabel}</span>
+                    <strong>{resonanceScore} резонанс · {signal.depthScore} глубина</strong>
                   </div>
                   <em>+{rewardXp} XP</em>
                 </div>
@@ -812,9 +827,8 @@ function App() {
                 <div className="resonance-next">
                   <Sparkles size={15} aria-hidden="true" />
                   <span>
-                    {leadingMatch
-                      ? `Ближе всего: ${leadingMatch.state}, ${leadingMatch.score}%`
-                      : 'Добавь мысль, чтобы карта нашла похожих людей'}
+                    ДНК мысли: {thoughtLenses.join(' · ')}
+                    {leadingMatch ? ` · ближе всего ${leadingMatch.state}` : ''}
                   </span>
                 </div>
               </div>
@@ -1028,6 +1042,16 @@ function App() {
               </button>
             </div>
 
+            <div className="thought-lens-strip" aria-label="ДНК мысли комнаты">
+              <span>ДНК мысли</span>
+              <div>
+                {thoughtLenses.map((lens) => (
+                  <i key={lens}>{lens}</i>
+                ))}
+              </div>
+              <em>{signal.depthScore} глубина</em>
+            </div>
+
             <div className="member-strip" aria-label="Участники комнаты">
               {room.members.map((member) => (
                 <span className="member" key={member.id}>
@@ -1066,11 +1090,11 @@ function App() {
 
             <div className="conversation-deck" aria-label="Карточки для начала разговора">
               <div className="conversation-deck-head">
-                <span>
-                  <Sparkles size={15} aria-hidden="true" />
-                  Карты разговора
-                </span>
-                <small>выбери ход, получи +XP за первый ответ</small>
+                  <span>
+                    <Sparkles size={15} aria-hidden="true" />
+                  Карты рассуждения
+                  </span>
+                <small>гипотеза, парадокс или образ для первого хода</small>
               </div>
 
               <div className="conversation-card-grid">
