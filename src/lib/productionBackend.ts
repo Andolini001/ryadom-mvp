@@ -47,6 +47,22 @@ const numberValue = (value: unknown, fallback = 0) =>
 const stringArray = (value: unknown) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
 const rawArray = (value: unknown): RawRecord[] =>
   Array.isArray(value) ? value.filter((item): item is RawRecord => Boolean(item) && typeof item === 'object') : []
+const newestCreatedAt = (items: RawRecord[], current: string | null) => {
+  let next = current
+  let nextTime = current ? Date.parse(current) : 0
+
+  items.forEach((item) => {
+    const createdAt = text(item.created_at)
+    const createdTime = Date.parse(createdAt)
+
+    if (Number.isFinite(createdTime) && createdTime > nextTime) {
+      next = createdAt
+      nextTime = createdTime
+    }
+  })
+
+  return next
+}
 
 const formatTime = (value: unknown) => {
   const raw = text(value)
@@ -315,22 +331,57 @@ export const subscribeToRoomMessages = (
 
   if (profile?.mode === 'guest') {
     let stopped = false
-    const pollMessages = async () => {
-      const { data, error } = await client.rpc('load_guest_messages', {
-        p_guest_token: guestToken(profile),
-        p_room_id: roomId,
-      })
+    let inFlight = false
+    let lastSeenAt: string | null = null
+    let timer: number | null = null
 
-      if (stopped || error) return
-      rawArray(data).map(mapMessage).forEach(onMessage)
+    const scheduleNextPoll = () => {
+      if (stopped) return
+
+      const delay = document.hidden ? 2400 : 950
+      timer = window.setTimeout(() => void pollMessages(), delay)
+    }
+
+    const pollMessages = async () => {
+      if (stopped || inFlight) return
+
+      inFlight = true
+      try {
+        const { data, error } = await client.rpc('load_guest_messages_since', {
+          p_guest_token: guestToken(profile),
+          p_room_id: roomId,
+          p_after: lastSeenAt,
+        })
+
+        if (stopped || error) return
+
+        const records = rawArray(data)
+        lastSeenAt = newestCreatedAt(records, lastSeenAt)
+        records.map(mapMessage).forEach(onMessage)
+      } finally {
+        inFlight = false
+        scheduleNextPoll()
+      }
     }
 
     void pollMessages()
-    const timer = window.setInterval(() => void pollMessages(), 1800)
+    const pollNowWhenVisible = () => {
+      if (document.hidden) return
+      if (timer !== null) {
+        window.clearTimeout(timer)
+        timer = null
+      }
+      void pollMessages()
+    }
+
+    document.addEventListener('visibilitychange', pollNowWhenVisible)
 
     return () => {
       stopped = true
-      window.clearInterval(timer)
+      if (timer !== null) {
+        window.clearTimeout(timer)
+      }
+      document.removeEventListener('visibilitychange', pollNowWhenVisible)
     }
   }
 
