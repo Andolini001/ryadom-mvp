@@ -800,8 +800,8 @@ function App() {
     setRewardClaimed(true)
     updateFeedback(nextFeedback)
     setBackendNotice(
-      backendMode === 'live'
-        ? 'Сохраняем след комнаты в живой сессии.'
+      backendMode === 'live' && activeRoomId
+        ? 'След комнаты сохранен. Синхронизируем с live-сессией.'
         : 'След комнаты сохранен локально. В live mode он уйдет в Supabase.',
     )
   }
