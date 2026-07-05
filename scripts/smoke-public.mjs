@@ -5,7 +5,6 @@ const requiredStaticAssets = [
   'manifest.webmanifest',
   'favicon.svg',
   'glass-bg.png',
-  'signal-map-bg.png',
 ]
 
 const fail = (message) => {

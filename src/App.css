@@ -3149,221 +3149,12 @@ textarea:focus {
   }
 }
 
-/* Game-like signal map: the illustrated island map is the primary surface. */
-.signal-world {
-  filter: drop-shadow(0 30px 64px rgba(0, 0, 0, 0.34));
-}
-
-.signal-world-head {
-  display: none;
-}
-
-.signal-map-art {
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(5, 9, 13, 0.02), rgba(5, 9, 13, 0.12)),
-    url("/signal-map-bg.png") center / cover no-repeat;
-  border: 1px solid rgba(246, 208, 152, 0.22);
-  border-radius: 26px;
-  box-shadow:
-    0 28px 88px rgba(0, 0, 0, 0.42),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 -64px 90px rgba(2, 7, 12, 0.18);
-}
-
-.signal-map-art::before {
-  inset: 0;
-  background:
-    radial-gradient(circle at 50% 39%, rgba(89, 246, 214, 0.08), transparent 25%),
-    radial-gradient(circle at 77% 17%, rgba(170, 105, 255, 0.07), transparent 22%),
-    linear-gradient(180deg, rgba(1, 7, 15, 0.03), transparent 28%, rgba(1, 7, 15, 0.22));
-  border: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: none;
-}
-
-.signal-map-art::after {
-  inset: 0;
-  background:
-    radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.34) 100%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 16% 84%, rgba(255, 255, 255, 0.04));
-  background-size: auto;
-  border-radius: inherit;
-  mask-image: none;
-  opacity: 0.78;
-}
-
-.signal-links,
-.signal-specks,
-.signal-hub,
-.signal-node {
-  display: none;
-}
-
-.match-radar {
-  right: 18px;
-  bottom: 16px;
-  left: 18px;
-  z-index: 4;
-  grid-template-columns: 70px minmax(0, 1fr);
-  min-height: 88px;
-  padding: 10px 12px;
-  border-radius: 22px;
-  opacity: 0;
-  transform: translateY(12px) scale(0.98);
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.match-radar.searching {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-.match-radar.ready,
-.match-radar.locked {
-  visibility: hidden;
-}
-
-.radar-orbit {
-  --radar-radius: 26px;
-  width: 64px;
-  height: 64px;
-}
-
-.radar-orbit strong {
-  font-size: 22px;
-}
-
-.radar-orbit small {
-  margin-top: 25px;
-  font-size: 8px;
-}
-
-.radar-matches {
-  display: none;
-}
-
-.radar-status strong {
-  font-size: 14px;
-}
-
-.radar-stats span {
-  padding: 5px 7px;
-  font-size: 10px;
-}
-
-.tab-signals .signal-stage {
-  display: grid;
-  width: min(346px, 100%);
-  margin: 0 auto;
-  padding: 0;
-  min-height: auto;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  place-items: center;
-}
-
-.tab-signals .signal-stage::before,
-.tab-signals .signal-stage::after {
-  display: none;
-}
-
-.tab-signals .signal-world {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 346 / 649;
-  margin: 0 auto;
-}
-
-.signal-map-art,
-.tab-signals .signal-map-art {
-  inset: 0;
-}
-
-@media (max-width: 1180px) {
-  .signal-world {
-    height: 560px;
-  }
-
-  .match-radar {
-    right: 8px;
-    bottom: 10px;
-    left: 8px;
-    max-width: 520px;
-    margin: 0 auto;
-  }
-
-  .tab-signals .signal-world {
-    height: auto;
-  }
-}
-
-@media (max-width: 720px) {
-  .signal-world {
-    height: 540px;
-  }
-
-  .signal-map-art {
-    inset: 0;
-    border-radius: 28px;
-  }
-
-  .match-radar {
-    grid-template-columns: 78px minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px;
-    border-radius: 22px;
-  }
-
-  .radar-orbit {
-    --radar-radius: 30px;
-    width: 78px;
-    height: 78px;
-  }
-
-  .radar-orbit strong {
-    font-size: 24px;
-  }
-
-  .radar-orbit small {
-    margin-top: 29px;
-    font-size: 9px;
-  }
-
-  .radar-status strong {
-    font-size: 14px;
-  }
-
-  .radar-stats span,
-  .radar-match-chip {
-    font-size: 10px;
-  }
-
-  .match-radar.searching .radar-matches {
-    display: none;
-  }
-
-  .tab-signals .signal-stage {
-    width: min(346px, 100%);
-    padding: 0;
-    min-height: auto;
-  }
-
-  .tab-signals .signal-world {
-    width: 100%;
-    height: auto;
-  }
-}
-
 /* Cleanup pass: Home is for the check-in, Signals is for readable matches. */
 .app-shell,
 .app-shell input,
 .app-shell textarea,
 .app-shell button {
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-family: var(--font-main);
 }
 
 .tab-home .signal-stage {
@@ -3384,15 +3175,18 @@ textarea:focus {
 .tab-home h1 {
   max-width: 560px;
   font-size: clamp(38px, 4vw, 58px);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.06;
 }
 
 .tab-home h2,
-.tab-home .field span,
+.tab-home .field span {
+  font-weight: 600;
+}
+
 .tab-home input,
 .tab-home textarea {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .tab-home .quest-label {

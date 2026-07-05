@@ -8,7 +8,6 @@ import {
   HeartHandshake,
   Home,
   Lock,
-  Map,
   MessageCircle,
   Radio,
   Rocket,
@@ -259,7 +258,7 @@ const buildDemoReply = (body: string, topics: string[]) => {
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
-  { id: 'signals', label: 'Карта сигналов', icon: Map },
+  { id: 'signals', label: 'Сигналы', icon: Users },
   { id: 'missions', label: 'Миссии', icon: Target, count: '2' },
   { id: 'safety', label: 'Защита', icon: Shield },
 ] satisfies Array<{ id: TabId; label: string; icon: typeof Home; count?: string }>
@@ -886,6 +885,8 @@ function App() {
 
         <section className="hero-grid" id="check-in">
           <div className="signal-stage">
+            {activeTab === 'home' && (
+              <>
             <div className="stage-copy">
               <p className="quest-label">Чек-ин за 30 секунд</p>
               <h1>Что сейчас внутри?</h1>
@@ -1028,8 +1029,11 @@ function App() {
                 <span>{safetyCopy}</span>
               </div>
             </div>
+              </>
+            )}
 
-            <div className="signal-world" id="signals" aria-label="Карта сигналов рядом">
+            {activeTab === 'signals' && (
+            <div className="signal-world" id="signals" aria-label="Сигналы рядом">
               <div className="signal-world-head">
                 <span>
                   <i />
@@ -1120,6 +1124,7 @@ function App() {
                 ))}
               </div>
             </div>
+            )}
           </div>
 
           <aside className="room-console" id="room" aria-label="Активная комната">
