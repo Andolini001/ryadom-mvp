@@ -169,6 +169,40 @@ const conversationCards = [
   message: string
 }>
 
+const roomRounds = [
+  {
+    id: 'spark',
+    title: 'Искра',
+    xp: 18,
+    completeAt: 2,
+    cue: 'Поймайте главную мысль без длинного объяснения. Один честный штрих лучше идеального текста.',
+    prompt: 'Если коротко, главная мысль у меня сейчас такая: ',
+  },
+  {
+    id: 'mirror',
+    title: 'Зеркало',
+    xp: 28,
+    completeAt: 4,
+    cue: 'Найдите, где вы похожи, а где неожиданно отличаетесь. Там обычно начинается настоящий разговор.',
+    prompt: 'Я заметил одну похожесть и одно отличие: ',
+  },
+  {
+    id: 'trace',
+    title: 'След',
+    xp: 42,
+    completeAt: 6,
+    cue: 'Соберите одну мысль, которую хочется унести из комнаты после разговора.',
+    prompt: 'После этого разговора я, кажется, заберу с собой такую мысль: ',
+  },
+] satisfies Array<{
+  id: string
+  title: string
+  xp: number
+  completeAt: number
+  cue: string
+  prompt: string
+}>
+
 const waveInviteTemplates: Record<
   string,
   {
@@ -348,7 +382,9 @@ function App() {
   const onlineSignals = 118 + localMatches.length * 7 + reports.length
   const activeRooms = matches.slice(0, 4)
   const roomMessages = room.messages.slice(-4)
-  const progressCount = Math.min(5, Math.max(1, room.messages.filter((item) => item.tone !== 'system').length))
+  const meaningfulMessageCount = room.messages.filter((item) => item.tone !== 'system').length
+  const roomRoundMessageCount = hasMatched ? meaningfulMessageCount : 0
+  const progressCount = Math.min(5, Math.max(1, meaningfulMessageCount))
   const activeNavLabel = navItems.find((item) => item.id === activeTab)?.label ?? 'Главная'
   const signalNodes = matches.slice(0, 5)
   const radarMatches = matches.slice(0, 3)
@@ -372,6 +408,22 @@ function App() {
   const depthLabel =
     signal.depthScore >= 82 ? 'глубокая мысль' : signal.depthScore >= 64 ? 'есть крючок' : 'мягкий вход'
   const rewardLabel = rewardClaimed ? 'Награда собрана' : hasMatched ? 'Открыть награду' : 'Награда ждёт комнату'
+  const nextRoundIndex = roomRounds.findIndex((round) => roomRoundMessageCount < round.completeAt)
+  const activeRoundIndex = nextRoundIndex === -1 ? roomRounds.length - 1 : nextRoundIndex
+  const activeRound = roomRounds[activeRoundIndex]
+  const completedRoundCount = roomRounds.filter((round) => roomRoundMessageCount >= round.completeAt).length
+  const roundProgress = Math.min(
+    100,
+    Math.round((roomRoundMessageCount / roomRounds[roomRounds.length - 1].completeAt) * 100),
+  )
+  const roundMovesLeft = Math.max(0, activeRound.completeAt - roomRoundMessageCount)
+  const roundMoveWord =
+    roundMovesLeft === 1 ? 'ход' : roundMovesLeft > 1 && roundMovesLeft < 5 ? 'хода' : 'ходов'
+  const roundStatusText = hasMatched
+    ? completedRoundCount === roomRounds.length
+      ? 'цепочка закрыта'
+      : `${roundMovesLeft} ${roundMoveWord} до награды`
+    : 'откроется после матча'
   const inviteWaveKey = thoughtLenses.find((lens) => lens in waveInviteTemplates) ?? 'наблюдение'
   const inviteWaveLabel = inviteWaveKey === 'наблюдение' ? 'редкая мысль' : inviteWaveKey
   const inviteUrl = useMemo(() => {
@@ -581,6 +633,14 @@ function App() {
   const applyConversationCard = (card: (typeof conversationCards)[number]) => {
     setMessage(card.message)
     setSelectedConversationCardId(card.id)
+    window.requestAnimationFrame(() => messageInputRef.current?.focus())
+  }
+
+  const applyRoundPrompt = () => {
+    if (!hasMatched) return
+
+    setMessage(activeRound.prompt)
+    setSelectedConversationCardId(null)
     window.requestAnimationFrame(() => messageInputRef.current?.focus())
   }
 
@@ -1186,6 +1246,50 @@ function App() {
                 ))}
               </div>
               <em>{signal.depthScore} глубина</em>
+            </div>
+
+            <div className={`round-strip ${hasMatched ? 'active' : 'locked'}`} aria-label="Раунды комнаты">
+              <div className="round-strip-head">
+                <span>
+                  <Flame size={15} aria-hidden="true" />
+                  Сессия рассуждения
+                </span>
+                <strong>{hasMatched ? activeRound.title : 'Раунды откроются после матча'}</strong>
+                <em>{roundProgress}%</em>
+              </div>
+
+              <p>{hasMatched ? activeRound.cue : 'Найди своих, чтобы открыть короткую цепочку из трех ходов.'}</p>
+
+              <div className="round-progress" aria-hidden="true">
+                <i style={{ width: `${roundProgress}%` }} />
+              </div>
+
+              <div className="round-track">
+                {roomRounds.map((round, index) => {
+                  const state =
+                    roomRoundMessageCount >= round.completeAt
+                      ? 'done'
+                      : index === activeRoundIndex
+                        ? 'current'
+                        : 'locked'
+
+                  return (
+                    <span className={`round-step ${state}`} key={round.id}>
+                      <i>{index + 1}</i>
+                      <b>{round.title}</b>
+                      <small>+{round.xp} XP</small>
+                    </span>
+                  )
+                })}
+              </div>
+
+              <div className="round-action-row">
+                <span>{roundStatusText}</span>
+                <button type="button" onClick={applyRoundPrompt} disabled={!hasMatched}>
+                  <Target size={15} aria-hidden="true" />
+                  Следующий ход
+                </button>
+              </div>
             </div>
 
             <div className={`invite-strip ${inviteStatus ? 'copied' : ''}`}>
