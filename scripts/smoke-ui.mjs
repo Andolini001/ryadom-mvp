@@ -82,6 +82,15 @@ const checkNoHorizontalOverflow = async (page, label) => {
     const scrollWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth)
     const offenders = [...document.body.querySelectorAll('*')]
       .map((element) => {
+        const style = window.getComputedStyle(element)
+        if (
+          style.display === 'none' ||
+          style.visibility === 'hidden' ||
+          Number.parseFloat(style.opacity) === 0
+        ) {
+          return null
+        }
+
         const rect = element.getBoundingClientRect()
         return {
           tag: element.tagName.toLowerCase(),
@@ -91,7 +100,8 @@ const checkNoHorizontalOverflow = async (page, label) => {
           width: Math.round(rect.width),
         }
       })
-      .filter((item) => item.width > 0 && (item.left < -2 || item.right > viewport + 2))
+      .filter((item) => item && item.width > 0 && (item.left < -2 || item.right > viewport + 2))
+      .filter((item) => !item.className.includes('world-backdrop'))
       .slice(0, 5)
 
     return { viewport, scrollWidth, offenders }
@@ -101,6 +111,42 @@ const checkNoHorizontalOverflow = async (page, label) => {
     overflow.scrollWidth <= overflow.viewport + 2,
     `${label} has horizontal overflow: ${JSON.stringify(overflow)}`,
   )
+  assert(
+    overflow.offenders.length === 0,
+    `${label} has clipped visible elements: ${JSON.stringify(overflow)}`,
+  )
+}
+
+const checkNoMobileNavOverlap = async (page) => {
+  const overlap = await page.evaluate(() => {
+    const nav = document.querySelector('.mobile-nav')
+    if (!(nav instanceof HTMLElement)) return []
+
+    const navRect = nav.getBoundingClientRect()
+    return [...document.querySelectorAll('.tab-home .intent, .tab-home .spark-deck-head, .tab-home .spark-card, .tab-home .safety-note, .tab-home .primary-cta')]
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        const intersects =
+          rect.bottom > navRect.top + 2 &&
+          rect.top < navRect.bottom - 2 &&
+          rect.right > navRect.left + 2 &&
+          rect.left < navRect.right - 2
+
+        return intersects
+          ? {
+              tag: element.tagName.toLowerCase(),
+              className: typeof element.className === 'string' ? element.className : '',
+              top: Math.round(rect.top),
+              bottom: Math.round(rect.bottom),
+              navTop: Math.round(navRect.top),
+              navBottom: Math.round(navRect.bottom),
+            }
+          : null
+      })
+      .filter(Boolean)
+  })
+
+  assert(overlap.length === 0, `Mobile nav overlaps important home controls: ${JSON.stringify(overlap)}`)
 }
 
 const runSmoke = async () => {
@@ -194,6 +240,7 @@ const runSmoke = async () => {
     await page.waitForSelector('.app-shell')
     assert(await page.locator('.tab-home .signal-world').count() === 0, 'Signal map leaked onto mobile home tab.')
     await checkNoHorizontalOverflow(page, 'Mobile')
+    await checkNoMobileNavOverlap(page)
 
     assert(runtimeIssues.length === 0, `Runtime issues found:\n${runtimeIssues.join('\n')}`)
   } finally {

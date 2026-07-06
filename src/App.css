@@ -3676,6 +3676,52 @@ textarea:focus {
   }
 }
 
+@media (max-width: 720px) {
+  .tab-home .signal-stage,
+  .tab-home .checkin-panel,
+  .tab-home .intent-grid,
+  .tab-home .spark-grid {
+    min-width: 0;
+  }
+
+  .tab-home .intent-grid {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .tab-home .intent {
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 58px;
+  }
+
+  .tab-home .intent span {
+    overflow-wrap: anywhere;
+    line-height: 1.1;
+  }
+
+  .tab-home .spark-grid {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .tab-home .spark-deck {
+    margin-top: 112px;
+  }
+
+  .tab-home .spark-card {
+    min-height: auto;
+    padding: 10px 11px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .match-radar.searching .radar-ring i,
   .mobile-search-toast i,
