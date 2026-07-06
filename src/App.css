@@ -3684,6 +3684,22 @@ textarea:focus {
     min-width: 0;
   }
 
+  .tab-home .checkin-panel {
+    gap: 7px;
+  }
+
+  .tab-home .field {
+    gap: 5px;
+  }
+
+  .tab-home textarea {
+    min-height: 88px;
+  }
+
+  .tab-home .primary-cta {
+    min-height: 40px;
+  }
+
   .tab-home .intent-grid {
     display: grid;
     grid-auto-flow: row;
@@ -3713,7 +3729,7 @@ textarea:focus {
   }
 
   .tab-home .spark-deck {
-    margin-top: 112px;
+    margin-top: 128px;
   }
 
   .tab-home .spark-card {

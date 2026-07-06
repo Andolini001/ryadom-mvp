@@ -238,6 +238,7 @@ const runSmoke = async () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.app-shell')
+    await page.evaluate(() => window.scrollTo(0, 0))
     assert(await page.locator('.tab-home .signal-world').count() === 0, 'Signal map leaked onto mobile home tab.')
     await checkNoHorizontalOverflow(page, 'Mobile')
     await checkNoMobileNavOverlap(page)
