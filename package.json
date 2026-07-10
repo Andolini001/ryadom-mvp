@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:matching-db": "node scripts/test-matching-db.mjs",
+    "smoke:matching-live": "node scripts/smoke-matching-live.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
     "smoke:public": "node scripts/smoke-public.mjs",
     "smoke:ui": "node scripts/smoke-ui.mjs",
