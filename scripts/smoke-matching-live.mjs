@@ -40,7 +40,7 @@ const enterRoom = async ({ state, thought, label }) => {
 
   return {
     code: (await page.locator('.room-console .overline').innerText()).trim(),
-    title: (await page.locator('.room-state strong').innerText()).trim(),
+    title: (await page.locator('.room-console h2').innerText()).trim(),
     members: await page.locator('.member-strip .member').count(),
   }
 }

@@ -41,10 +41,7 @@ const enterLiveRoom = async (page, suffix) => {
     `Редкая мысль становится яснее в разговоре с человеком, который замечает тот же кварцовый спутник ${marker}.`,
   )
   await page.locator('.primary-cta').click()
-  await page.waitForSelector('.tab-room .room-console')
-  await page.waitForFunction(
-    () => document.querySelector('.tab-room .room-console h2')?.textContent?.includes('Комната активна'),
-  )
+  await page.waitForSelector('.tab-room .room-console.active-room')
 
   return (await page.locator('.room-console .overline').first().innerText()).trim()
 }

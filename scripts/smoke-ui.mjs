@@ -240,7 +240,7 @@ const runSmoke = async () => {
       `Home title letter spacing drifted: ${homeFont.letterSpacing}`,
     )
 
-    await page.getByRole('button', { name: 'Сигналы' }).click()
+    await page.getByRole('button', { name: 'Совпадения' }).click()
     assert(await page.locator('.tab-signals .match-radar:visible').count() === 0, 'Old radar widget should stay hidden on signals tab.')
     assert(await page.locator('.tab-signals .signal-hub:visible').count() === 0, 'Old central signal hub should stay hidden.')
 
@@ -248,7 +248,7 @@ const runSmoke = async () => {
       await page.waitForSelector('.tab-signals .live-signal-state')
       assert(await page.locator('.tab-signals .signal-node').count() === 0, 'Live mode must not present demo people as real signals.')
       assert(
-        (await visibleText(page.locator('.live-signal-state strong'))) === 'Сначала отправь свою мысль',
+        (await visibleText(page.locator('.live-signal-state strong'))) === 'Сначала расскажи, о чем думаешь',
         'Live signals tab should explain the real first step.',
       )
       await page.getByRole('button', { name: 'Создать сигнал' }).click()
@@ -262,7 +262,7 @@ const runSmoke = async () => {
     await page.waitForSelector('.tab-room .room-console')
 
     const roomTitle = await visibleText(page.locator('.room-console h2').first())
-    assert(roomTitle === 'Комната активна', `Expected active room, got "${roomTitle}".`)
+    assert(roomTitle !== 'Комната пока пуста', `Expected active room, got "${roomTitle}".`)
 
     const roomLayout = await page.evaluate(() => {
       const grid = document.querySelector('.tab-room .hero-grid')
@@ -279,32 +279,26 @@ const runSmoke = async () => {
       `Desktop room should use the available width: ${JSON.stringify(roomLayout)}`,
     )
 
-    const initialPulse = Number.parseInt(await visibleText(page.locator('.room-pulse-ring span')), 10)
-    assert(initialPulse >= 30 && initialPulse < 100, `Unexpected initial room pulse: ${initialPulse}.`)
+    assert(
+      await page.locator('.room-pulse-card:visible, .round-strip:visible').count() === 0,
+      'Hidden game mechanics should not compete with the conversation.',
+    )
+    assert(
+      await page.locator('.chat-window:visible, .message-form:visible').count() === 2,
+      'Room should keep the chat and composer visible.',
+    )
 
     const turnsToComplete = isLiveBackend ? 6 : 3
     for (let index = 0; index < turnsToComplete; index += 1) {
-      await page.getByRole('button', { name: 'Подсказать вопрос' }).click()
-      await page.waitForFunction(() => {
-        const input = document.querySelector('.message-form input')
-        return input instanceof HTMLInputElement && input.value.trim().length > 0
-      })
+      await page.locator('.message-form input').fill(`Проверочная мысль ${index + 1}: хочу продолжить этот разговор спокойно.`)
       await page.getByRole('button', { name: 'Отправить сообщение' }).click()
       await page.waitForTimeout(isLiveBackend ? 180 : 1_050)
     }
 
-    await page.waitForFunction(() => {
-      const progress = document.querySelector('.round-progress i')
-      return progress instanceof HTMLElement && Number.parseFloat(progress.style.width) >= 100
-    })
+    await page.waitForSelector('.room-close-card.ready:visible')
 
     const finalLabel = await visibleText(page.locator('.room-close-head strong'))
     assert(finalLabel === 'Инсайт собран', `Expected completed room summary, got "${finalLabel}".`)
-
-    const finalPulse = Number.parseInt(await visibleText(page.locator('.room-pulse-ring span')), 10)
-    const pulseLabel = await visibleText(page.locator('.room-pulse-copy strong'))
-    assert(finalPulse > initialPulse, `Room pulse did not grow: ${initialPulse} -> ${finalPulse}.`)
-    assert(pulseLabel === 'мысль собрана', `Unexpected completed pulse label: "${pulseLabel}".`)
 
     await page.getByRole('button', { name: 'Сохранить след' }).click()
     await page.waitForFunction(() => document.body.textContent?.includes('След сохранен'))
@@ -314,7 +308,7 @@ const runSmoke = async () => {
 
     await checkNoHorizontalOverflow(page, 'Desktop')
 
-    await page.locator('.side-nav button').filter({ hasText: 'Миссии' }).click()
+    await page.locator('.side-nav button').filter({ hasText: 'Итоги' }).click()
     await page.waitForSelector('.app-shell.tab-missions')
     assert(await page.locator('.waitlist-band').count() === 0, 'Obsolete waitlist should not appear in the live product.')
     await checkNoHorizontalOverflow(page, 'Desktop missions')
@@ -333,14 +327,14 @@ const runSmoke = async () => {
     await checkNoHorizontalOverflow(page, 'Mobile')
     await checkNoMobileNavOverlap(page)
 
-    await page.getByRole('button', { name: 'Сигналы' }).click()
+    await page.getByRole('button', { name: 'Совпадения' }).click()
     if (isLiveBackend) {
       await page.waitForSelector('.tab-signals .live-signal-state')
       await checkNoHorizontalOverflow(page, 'Mobile live signals')
     } else {
       await page.waitForSelector('.tab-signals .signal-node')
       await page.locator('.tab-signals .signal-node').first().click()
-      await page.waitForSelector('.tab-room .room-pulse-card')
+      await page.waitForSelector('.tab-room .room-console')
       await page.evaluate(() => window.scrollTo(0, 0))
       await checkNoHorizontalOverflow(page, 'Mobile room')
       await checkNoMobileRoomControlOverlap(page)

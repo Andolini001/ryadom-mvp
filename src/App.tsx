@@ -7,6 +7,7 @@ import {
   Home,
   Lock,
   MessageCircle,
+  MoreHorizontal,
   Radio,
   Rocket,
   Send,
@@ -293,8 +294,8 @@ const buildDemoReply = (body: string, topics: string[]) => {
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle },
-  { id: 'signals', label: 'Сигналы', icon: Users },
-  { id: 'missions', label: 'Миссии', icon: Target },
+  { id: 'signals', label: 'Совпадения', icon: Users },
+  { id: 'missions', label: 'Итоги', icon: Target },
   { id: 'safety', label: 'Защита', icon: Shield },
 ] satisfies Array<{ id: TabId; label: string; icon: typeof Home }>
 
@@ -378,7 +379,7 @@ function App() {
     signal.safetyLevel !== 'blocked' &&
     signal.safetyLevel !== 'crisis'
   const roomCode = room.id.match(/\d+/g)?.join('').slice(-3) || '348'
-  const roomMessages = room.messages.slice(-4)
+  const roomMessages = room.messages.slice(-10)
   const meaningfulMessageCount = room.messages.filter((item) => item.tone !== 'system').length
   const roomRoundMessageCount = hasMatched ? meaningfulMessageCount : 0
   const progressCount = Math.min(5, meaningfulMessageCount)
@@ -1025,14 +1026,14 @@ function App() {
                   <i />
                   {backendMode === 'live'
                     ? liveMatches === null
-                      ? 'Живой поиск готов'
-                      : `Реальных совпадений: ${signalNodes.length}`
-                    : `Демо-сигналов: ${signalNodes.length}`}
+                      ? 'Совпадения'
+                      : `Подходящих людей: ${signalNodes.length}`
+                    : `Демо-совпадения: ${signalNodes.length}`}
                 </span>
                 <small>
                   {backendMode === 'live'
                     ? liveMatches === null
-                      ? 'результаты появятся после твоего чек-ина'
+                      ? 'здесь появятся люди с близкой мыслью'
                       : activeRoomId
                         ? 'твоя живая комната уже открыта'
                         : 'совпадения из последнего поиска'
@@ -1046,9 +1047,9 @@ function App() {
                     <Radio size={25} aria-hidden="true" />
                   </span>
                   <div>
-                    <span>Честный live-режим</span>
-                    <strong>Сначала отправь свою мысль</strong>
-                    <p>Мы не показываем вымышленных людей. После чек-ина здесь появятся только реальные свежие совпадения.</p>
+                    <span>Только реальные люди</span>
+                    <strong>Сначала расскажи, о чем думаешь</strong>
+                    <p>Мы покажем только свежие совпадения по теме и намерению. Никаких вымышленных профилей.</p>
                   </div>
                   <button type="button" onClick={() => setActiveTab('home')}>
                     <Rocket size={16} aria-hidden="true" />
@@ -1102,11 +1103,15 @@ function App() {
             )}
           </div>
 
-          <aside className="room-console" id="room" aria-label="Активная комната">
+          <aside
+            className={`room-console ${hasMatched ? 'active-room' : 'empty-room'}`}
+            id="room"
+            aria-label="Активная комната"
+          >
             <div className="panel-heading">
               <div>
                 <p className="overline">Комната #{roomCode}</p>
-                <h2>{hasMatched ? 'Комната активна' : 'Комната ждет сигнал'}</h2>
+                <h2>{hasMatched ? room.title.replace(/^Комната:\s*/, '') : 'Комната пока пуста'}</h2>
               </div>
               <span className={`live-pill ${backendMode === 'live' && activeRoomId ? '' : 'demo'}`}>
                 {backendMode === 'live' && activeRoomId ? 'Live' : 'Demo'}
@@ -1134,6 +1139,17 @@ function App() {
                 <span>{hasMatched ? `${room.members.length} рядом · ${activeRound.title}` : 'сначала создай сигнал'}</span>
               </div>
             </div>
+
+            {!hasMatched && (
+              <div className="room-empty-callout">
+                <MessageCircle size={28} aria-hidden="true" />
+                <div>
+                  <strong>Здесь появится твой разговор</strong>
+                  <p>Сначала опиши мысль. Когда найдется совпадение, комната откроется автоматически.</p>
+                </div>
+                <button type="button" onClick={() => setActiveTab('home')}>Создать мысль</button>
+              </div>
+            )}
 
             <div className={`round-strip ${hasMatched ? 'active' : 'locked'}`} aria-label="Раунды комнаты">
               <div className="round-strip-head">
@@ -1251,9 +1267,9 @@ function App() {
               <div className="conversation-deck-head">
                   <span>
                     <Sparkles size={15} aria-hidden="true" />
-                  Карты рассуждения
+                  Не знаешь, что написать?
                   </span>
-                <small>гипотеза, парадокс или образ для первого хода</small>
+                <small>выбери мягкое начало</small>
               </div>
 
               <div className="conversation-card-grid">
@@ -1335,14 +1351,22 @@ function App() {
                 <Share2 size={16} aria-hidden="true" />
                 Пригласить
               </button>
-              <button type="button" onClick={() => addReport('Пожаловаться на сообщение')}>
-                <AlertTriangle size={16} aria-hidden="true" />
-                Пожаловаться
-              </button>
-              <button type="button" onClick={() => addReport('Заблокировать участника')}>
-                <Ban size={16} aria-hidden="true" />
-                Блок
-              </button>
+              <details className="room-safety-menu">
+                <summary>
+                  <MoreHorizontal size={16} aria-hidden="true" />
+                  Еще
+                </summary>
+                <div>
+                  <button type="button" onClick={() => addReport('Пожаловаться на сообщение')}>
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    Пожаловаться
+                  </button>
+                  <button type="button" onClick={() => addReport('Заблокировать участника')}>
+                    <Ban size={16} aria-hidden="true" />
+                    Заблокировать
+                  </button>
+                </div>
+              </details>
             </div>
             {inviteStatus && <small className="invite-status">{inviteStatus}</small>}
             </div>
@@ -1390,16 +1414,16 @@ function App() {
           <div className="ops-panel" id="launch">
             <div className="panel-heading">
               <div>
-                <p className="overline">Сезон запуска</p>
-                <h2>Прогресс сегодня</h2>
+                <p className="overline">После разговора</p>
+                <h2>Как тебе было?</h2>
               </div>
               <Trophy size={22} aria-hidden="true" />
             </div>
 
             <div className="progress-card">
               <div>
-                <strong>{progressCount} / 5 комнат</strong>
-                <span>следующая награда: +100 XP</span>
+                <strong>Разговоров сегодня: {progressCount}</strong>
+                <span>Твоя оценка помогает улучшать подбор.</span>
               </div>
               <div className="progress-dots">
                 {Array.from({ length: 5 }).map((_, index) => (
@@ -1408,7 +1432,8 @@ function App() {
               </div>
             </div>
 
-            <div className="feedback-row">
+            <p className="feedback-prompt">Что изменилось после последней комнаты?</p>
+            <div className="feedback-row" aria-label="Оценка разговора">
               {[
                 ['lighter', 'легче'],
                 ['same', 'так же'],
@@ -1436,7 +1461,7 @@ function App() {
                 setFeedback((current) => ({ ...current, note: event.target.value }))
               }
               onBlur={() => updateFeedback(feedback)}
-              placeholder="Что улучшить в подборе?"
+              placeholder="Что было полезно или что стоит изменить?"
             />
           </div>
         </section>
