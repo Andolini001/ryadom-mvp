@@ -4853,7 +4853,7 @@ textarea:focus {
   }
 
   .trust-line {
-    justify-content: flex-start;
+    display: none;
   }
 
   .tab-home .spark-deck {
