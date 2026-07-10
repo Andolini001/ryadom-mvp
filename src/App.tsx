@@ -24,14 +24,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   initialRoom,
-  initialSafetyEvents,
   intentLabels,
 } from './data'
 import {
   createProductionReport,
   createRoomFromSignal,
   ensureProductionSession,
-  loadProductionSafetyEvents,
   saveProductionFeedback,
   sendProductionMessage,
   subscribeToRoomMessages,
@@ -45,7 +43,6 @@ import type {
   Message,
   Report,
   Room,
-  SafetyEvent,
   UserFeedback,
 } from './types'
 
@@ -345,7 +342,6 @@ function App() {
   const [room, setRoom] = useState<Room>(initialRoom)
   const [message, setMessage] = useState('')
   const [reports, setReports] = useState<Report[]>([])
-  const [, setSafetyEvents] = useState<SafetyEvent[]>(initialSafetyEvents)
   const [feedback, setFeedback] = useState<UserFeedback>({ moodAfter: null, note: '' })
   const [inviteStatus, setInviteStatus] = useState('')
   const [waveNotice, setWaveNotice] = useState('')
@@ -472,11 +468,7 @@ function App() {
     let cancelled = false
 
     ensureProductionSession()
-      .then(async (profile) => ({
-        profile,
-        events: await loadProductionSafetyEvents(),
-      }))
-      .then(({ profile, events }) => {
+      .then((profile) => {
         if (cancelled) return
         setSelfProfileId(profile.id)
         setBackendMode('live')
@@ -485,9 +477,6 @@ function App() {
             ? 'Живой backend подключен: гостевой вход без регистрации, комнаты и сообщения сохраняются в Supabase.'
             : 'Живой backend подключен: анонимная сессия, RLS и realtime готовы.',
         )
-        if (events.length > 0) {
-          setSafetyEvents(events)
-        }
       })
       .catch((error: unknown) => {
         if (cancelled) return
@@ -580,16 +569,8 @@ function App() {
     clearDemoReply()
 
     if (signal.safetyLevel === 'crisis' || signal.safetyLevel === 'blocked') {
-      const event: SafetyEvent = {
-        id: `s-${Date.now()}`,
-        label: signal.safetyLevel === 'crisis' ? 'Кризисный чек-ин' : 'Запрещенный контекст',
-        source: 'новый чек-ин',
-        status: 'new',
-        severity: signal.safetyLevel === 'crisis' ? 'high' : 'medium',
-        detail: safetyCopy,
-      }
-      setSafetyEvents((items) => [event, ...items])
       setHasMatched(false)
+      setBackendNotice(safetyCopy)
       setActiveTab('safety')
       return
     }
@@ -774,11 +755,7 @@ function App() {
 
     if (backendMode === 'live' && activeRoomId) {
       createProductionReport(activeRoomId, reason)
-        .then(() => loadProductionSafetyEvents())
-        .then((events) => {
-          if (events.length > 0) {
-            setSafetyEvents(events)
-          }
+        .then(() => {
           setBackendNotice('Репорт сохранен в Supabase и отправлен в очередь модерации.')
         })
         .catch((error: unknown) => {
@@ -790,17 +767,6 @@ function App() {
         })
     }
 
-    setSafetyEvents((items) => [
-      {
-        id: `s-${Date.now()}`,
-        label: reason,
-        source: room.title,
-        status: 'new',
-        severity: reason.includes('Заблокировать') ? 'medium' : 'low',
-        detail: 'Участник скрыт для комнаты, модератор видит контекст и историю репортов.',
-      },
-      ...items,
-    ])
   }
 
   const updateFeedback = (nextFeedback: UserFeedback) => {

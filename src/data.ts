@@ -1,4 +1,4 @@
-import type { CheckIn, Intent, Room, SafetyEvent } from './types'
+import type { CheckIn, Intent, Room } from './types'
 
 export const intentLabels: Record<Intent, string> = {
   vent: 'выговориться',
@@ -190,30 +190,3 @@ export const initialRoom: Room = {
     },
   ],
 }
-
-export const initialSafetyEvents: SafetyEvent[] = [
-  {
-    id: 's-01',
-    label: 'Кризисная фраза',
-    source: 'чек-ин',
-    status: 'watching',
-    severity: 'high',
-    detail: 'Не матчим напрямую, показываем помощь и отправляем в очередь.',
-  },
-  {
-    id: 's-02',
-    label: 'Запрос знакомства',
-    source: 'чат',
-    status: 'new',
-    severity: 'medium',
-    detail: 'Фильтр не пропускает сексуальный или дейтинг-контекст.',
-  },
-  {
-    id: 's-03',
-    label: 'Репорт участника',
-    source: 'комната 204',
-    status: 'resolved',
-    severity: 'low',
-    detail: 'Участник скрыт для комнаты, запись добавлена в журнал.',
-  },
-]

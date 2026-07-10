@@ -4,7 +4,6 @@ import type {
   Message,
   MoodSignal,
   Room,
-  SafetyEvent,
   User,
   UserFeedback,
 } from '../types'
@@ -202,18 +201,6 @@ const normalizeGuestRoomResponse = (
   }
 }
 
-const mapSafetyEvents = (items: RawRecord[]): SafetyEvent[] =>
-  items.map((item) => ({
-    id: text(item.id),
-    label: text(item.label),
-    source: text(item.source),
-    status:
-      item.status === 'watching' || item.status === 'resolved' ? item.status : 'new',
-    severity:
-      item.severity === 'high' || item.severity === 'medium' ? item.severity : 'low',
-    detail: text(item.detail),
-  }))
-
 const guestToken = (profile: ProductionProfile) => {
   if (!profile.guestToken) {
     throw new Error('Guest token is missing')
@@ -227,6 +214,9 @@ const authPayload = (profile: ProductionProfile) => ({
   alias: profile.alias,
   hue: profile.hue,
 })
+
+const matchingTopics = (signal: MoodSignal) =>
+  [...new Set([...signal.topics, ...signal.lenses])].slice(0, 8)
 
 const mapMember = (raw: RawRecord): User => ({
   id: text(raw.id),
@@ -290,7 +280,7 @@ export const createRoomFromSignal = async (
       p_state: signal.state,
       p_thought: signal.thought,
       p_intent: signal.intent,
-      p_topics: signal.topics,
+      p_topics: matchingTopics(signal),
       p_safety_level: signal.safetyLevel,
       p_alias: payload.alias,
       p_hue: payload.hue,
@@ -304,7 +294,7 @@ export const createRoomFromSignal = async (
     p_state: signal.state,
     p_thought: signal.thought,
     p_intent: signal.intent,
-    p_topics: signal.topics,
+    p_topics: matchingTopics(signal),
     p_safety_level: signal.safetyLevel,
     p_alias: payload.alias,
     p_hue: payload.hue,
@@ -492,50 +482,4 @@ export const saveProductionFeedback = async (
     { onConflict: 'room_id,user_id' },
   )
   if (error) throw error
-}
-
-export const joinProductionWaitlist = async (telegramHandle: string) => {
-  const client = requireClient()
-  const profile = await currentUserProfile()
-
-  if (profile.mode === 'guest') {
-    const { error } = await client.rpc('join_guest_waitlist', {
-      p_guest_token: guestToken(profile),
-      p_telegram_handle: telegramHandle,
-    })
-
-    if (error) throw error
-    return
-  }
-
-  const { error } = await client.from('waitlist_entries').insert({
-    user_id: profile.id,
-    telegram_handle: telegramHandle,
-    source: 'web',
-  })
-  if (error) throw error
-}
-
-export const loadProductionSafetyEvents = async (): Promise<SafetyEvent[]> => {
-  const client = requireClient()
-  const profile = await currentUserProfile()
-
-  if (profile.mode === 'guest') {
-    const { data, error } = await client.rpc('load_guest_safety_events', {
-      p_guest_token: guestToken(profile),
-    })
-
-    if (error) throw error
-    return mapSafetyEvents(rawArray(data))
-  }
-
-  const { data, error } = await client
-    .from('safety_events')
-    .select('id, label, source, status, severity, detail')
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  if (error) throw error
-
-  return mapSafetyEvents(rawArray(data))
 }

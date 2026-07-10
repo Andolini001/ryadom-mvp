@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test database matching invariants
+        run: npm run test:matching-db
+
       - name: Build demo for UI smoke
         run: npm run build -- --base=/ryadom-mvp/
 

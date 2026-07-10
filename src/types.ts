@@ -54,15 +54,6 @@ export type Room = {
   messages: Message[]
 }
 
-export type SafetyEvent = {
-  id: string
-  label: string
-  source: string
-  status: 'new' | 'watching' | 'resolved'
-  severity: 'low' | 'medium' | 'high'
-  detail: string
-}
-
 export type Report = {
   id: string
   roomId: string

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:matching-db": "node scripts/test-matching-db.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
     "smoke:public": "node scripts/smoke-public.mjs",
     "smoke:ui": "node scripts/smoke-ui.mjs",
@@ -19,6 +20,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
