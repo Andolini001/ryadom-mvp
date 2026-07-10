@@ -179,6 +179,31 @@ const checkNoMobileRoomControlOverlap = async (page) => {
   assert(overlap.length === 0, `Mobile nav overlaps room controls: ${JSON.stringify(overlap)}`)
 }
 
+const checkSignalCardLayout = async (page, label) => {
+  const cards = await page.evaluate(() => [...document.querySelectorAll('.signal-node')].map((card) => {
+    const avatar = card.querySelector('b')?.getBoundingClientRect()
+    const title = card.querySelector('em')?.getBoundingClientRect()
+    const detail = card.querySelector('.signal-node-detail')?.getBoundingClientRect()
+    const action = card.querySelector('.signal-node-action')?.getBoundingClientRect()
+    const style = window.getComputedStyle(card)
+
+    return {
+      display: style.display,
+      gridTemplateAreas: style.gridTemplateAreas,
+      separated:
+        avatar && title && detail && action
+          ? title.left >= avatar.right + 4 && detail.top >= title.bottom && action.top >= detail.bottom
+          : false,
+    }
+  }))
+
+  assert(cards.length > 0, `${label} has no signal cards to inspect.`)
+  assert(
+    cards.every((card) => card.display === 'grid' && card.gridTemplateAreas !== 'none' && card.separated),
+    `${label} signal card content overlaps: ${JSON.stringify(cards)}`,
+  )
+}
+
 const runSmoke = async () => {
   if (!explicitUrl) {
     const port = configuredPort ?? (await findFreePort())
@@ -256,6 +281,7 @@ const runSmoke = async () => {
     } else {
       await page.waitForSelector('.tab-signals .signal-node')
       assert(await page.locator('.tab-signals .signal-node').count() >= 3, 'Demo mode should show at least three readable practice signals.')
+      await checkSignalCardLayout(page, 'Desktop demo')
       await page.locator('.tab-signals .signal-node').first().click()
     }
 
@@ -338,6 +364,7 @@ const runSmoke = async () => {
       await checkNoHorizontalOverflow(page, 'Mobile live signals')
     } else {
       await page.waitForSelector('.tab-signals .signal-node')
+      await checkSignalCardLayout(page, 'Mobile demo')
       await page.locator('.tab-signals .signal-node').first().click()
       await page.waitForSelector('.tab-room .room-console')
       await page.evaluate(() => window.scrollTo(0, 0))

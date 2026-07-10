@@ -651,8 +651,8 @@ button {
   grid-template-columns: 44px 1fr;
   grid-template-areas:
     'avatar title'
-    'avatar detail detail'
-    'avatar action action';
+    'avatar detail'
+    'avatar action';
   align-items: center;
   gap: 5px 13px;
   padding: 18px;
