@@ -180,6 +180,28 @@ const mapRoomResponse = (result: BackendRoomResponse): {
   }
 }
 
+const normalizeGuestRoomResponse = (
+  result: ReturnType<typeof mapRoomResponse>,
+  viewerId: string,
+) => {
+  if (!result.room) return result
+
+  const otherMembers = result.room.members.filter((member) => member.id !== viewerId)
+  const remoteAlias = otherMembers.length === 1 ? otherMembers[0].alias : 'кто-то рядом'
+
+  return {
+    ...result,
+    room: {
+      ...result.room,
+      messages: result.room.messages.map((message) =>
+        message.author === 'вы' && message.tone !== 'system'
+          ? { ...message, author: remoteAlias, tone: 'plain' as const }
+          : message,
+      ),
+    },
+  }
+}
+
 const mapSafetyEvents = (items: RawRecord[]): SafetyEvent[] =>
   items.map((item) => ({
     id: text(item.id),
@@ -216,6 +238,7 @@ const mapMember = (raw: RawRecord): User => ({
 
 const mapMessage = (raw: RawRecord): Message => ({
   id: text(raw.id, `m-${Date.now()}`),
+  authorId: text(raw.guest_id, text(raw.user_id)) || undefined,
   author: text(raw.author, text(raw.author_snapshot, 'рядом')),
   body: text(raw.body),
   time: formatTime(raw.created_at),
@@ -274,7 +297,7 @@ export const createRoomFromSignal = async (
     })
 
     if (error) throw error
-    return mapRoomResponse(data as BackendRoomResponse)
+    return normalizeGuestRoomResponse(mapRoomResponse(data as BackendRoomResponse), profile.id)
   }
 
   const { data, error } = await client.rpc('create_room_for_checkin', {
@@ -303,7 +326,7 @@ export const sendProductionMessage = async (roomId: string, body: string) => {
     })
 
     if (error) throw error
-    return mapMessage(data as RawRecord)
+    return { ...mapMessage(data as RawRecord), author: 'вы', tone: 'warm' as const }
   }
 
   const { data, error } = await client
@@ -311,7 +334,7 @@ export const sendProductionMessage = async (roomId: string, body: string) => {
     .insert({
       room_id: roomId,
       user_id: profile.id,
-      author_snapshot: 'вы',
+      author_snapshot: profile.alias,
       body,
       tone: 'warm',
     })
@@ -319,7 +342,7 @@ export const sendProductionMessage = async (roomId: string, body: string) => {
     .single()
 
   if (error) throw error
-  return mapMessage(data as RawRecord)
+  return { ...mapMessage(data as RawRecord), author: 'вы', tone: 'warm' as const }
 }
 
 export const subscribeToRoomMessages = (

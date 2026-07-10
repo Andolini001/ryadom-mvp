@@ -68,6 +68,26 @@ const anonymousSelf = {
   trustScore: 100,
 }
 
+const liveMemberPalette = ['#d36f52', '#2f7d74', '#6f7d5f', '#8c6a9e', '#bb7d43', '#4c8b85']
+
+const memberFromJoinMessage = (message: Message) => {
+  if (message.tone !== 'system') return null
+
+  const match = message.body.match(/^(.+?) присоединился к комнате по похожей мысли\.$/)
+  const alias = match?.[1]?.trim()
+  if (!alias) return null
+
+  const hueIndex = [...alias].reduce((sum, character) => sum + character.charCodeAt(0), 0)
+
+  return {
+    id: `joined-${message.id}`,
+    alias,
+    hue: liveMemberPalette[hueIndex % liveMemberPalette.length],
+    lastSeen: 'сейчас',
+    trustScore: 80,
+  }
+}
+
 const defaultThought =
   'Вроде все нормально, но я устал держаться бодро. Хочу поговорить с теми, кто сейчас примерно там же.'
 
@@ -357,6 +377,7 @@ function App() {
   )
   const [liveMatches, setLiveMatches] = useState<ReturnType<typeof findMatches> | null>(null)
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
+  const [selfProfileId, setSelfProfileId] = useState<string | null>(null)
   const [isMatching, setIsMatching] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [selectedConversationCardId, setSelectedConversationCardId] = useState<string | null>(null)
@@ -379,7 +400,6 @@ function App() {
     signal.safetyLevel !== 'blocked' &&
     signal.safetyLevel !== 'crisis'
   const roomCode = room.id.match(/\d+/g)?.join('').slice(-3) || '348'
-  const onlineSignals = 118 + localMatches.length * 7 + reports.length
   const activeRooms = matches.slice(0, 4)
   const roomMessages = room.messages.slice(-4)
   const meaningfulMessageCount = room.messages.filter((item) => item.tone !== 'system').length
@@ -391,7 +411,6 @@ function App() {
   const topMatchScore = radarMatches[0]?.score ?? 34
   const resonanceScore = Math.min(99, Math.max(28, topMatchScore + signal.topics.length * 3))
   const rewardXp = 40 + radarMatches.length * 8 + signal.topics.length * 9
-  const radarStatus = isMatching ? 'идет поиск' : canMatch ? 'готов к запуску' : 'нужен короткий сигнал'
   const radarTopic = signal.topics[0] ?? 'новая мысль'
   const resonanceProgress = Math.min(
     100,
@@ -491,6 +510,7 @@ function App() {
       }))
       .then(({ profile, events }) => {
         if (cancelled) return
+        setSelfProfileId(profile.id)
         setBackendMode('live')
         setBackendNotice(
           profile.mode === 'guest'
@@ -524,13 +544,34 @@ function App() {
         if (current.id !== activeRoomId) return current
         if (current.messages.some((item) => item.id === nextMessage.id)) return current
 
+        const joinedMember = memberFromJoinMessage(nextMessage)
+        const members =
+          joinedMember && !current.members.some((member) => member.alias === joinedMember.alias)
+            ? [...current.members, joinedMember]
+            : current.members
+        const otherMembers = members.filter((member) => member.id !== selfProfileId)
+        const senderMember = nextMessage.authorId
+          ? members.find((member) => member.id === nextMessage.authorId)
+          : null
+        const visibleMessage =
+          nextMessage.author === 'вы' &&
+          nextMessage.tone !== 'system' &&
+          nextMessage.authorId !== selfProfileId
+            ? {
+                ...nextMessage,
+                author: senderMember?.alias ?? (otherMembers.length === 1 ? otherMembers[0].alias : 'кто-то рядом'),
+                tone: 'plain' as const,
+              }
+            : nextMessage
+
         return {
           ...current,
-          messages: [...current.messages, nextMessage],
+          members,
+          messages: [...current.messages, visibleMessage],
         }
       })
     })
-  }, [activeRoomId, backendMode])
+  }, [activeRoomId, backendMode, selfProfileId])
 
   useEffect(
     () => () => {
@@ -1139,92 +1180,81 @@ function App() {
               <div className="signal-world-head">
                 <span>
                   <i />
-                  Сигналов рядом: {onlineSignals}
+                  {backendMode === 'live'
+                    ? liveMatches === null
+                      ? 'Живой поиск готов'
+                      : `Реальных совпадений: ${signalNodes.length}`
+                    : `Демо-сигналов: ${signalNodes.length}`}
                 </span>
-                <small>обновляется каждые 15 секунд</small>
+                <small>
+                  {backendMode === 'live'
+                    ? liveMatches === null
+                      ? 'результаты появятся после твоего чек-ина'
+                      : activeRoomId
+                        ? 'твоя живая комната уже открыта'
+                        : 'совпадения из последнего поиска'
+                    : 'тренировочный режим без реальных пользователей'}
+                </small>
               </div>
 
-              <div className={`match-radar ${isMatching ? 'searching' : canMatch ? 'ready' : 'locked'}`} aria-live="polite">
-                <div className="radar-orbit">
-                  <span
-                    className="radar-ring"
-                    style={{
-                      background: `conic-gradient(rgba(223, 233, 208, 0.96) ${resonanceScore}%, rgba(255, 255, 255, 0.13) 0)`,
-                    }}
-                  >
-                    <i />
+              {backendMode === 'live' && liveMatches === null ? (
+                <div className="live-signal-state ready">
+                  <span className="live-signal-orb">
+                    <Radio size={25} aria-hidden="true" />
                   </span>
-                  <strong>{resonanceScore}</strong>
-                  <small>резонанс</small>
+                  <div>
+                    <span>Честный live-режим</span>
+                    <strong>Сначала отправь свою мысль</strong>
+                    <p>Мы не показываем вымышленных людей. После чек-ина здесь появятся только реальные свежие совпадения.</p>
+                  </div>
+                  <button type="button" onClick={() => setActiveTab('home')}>
+                    <Rocket size={16} aria-hidden="true" />
+                    Создать сигнал
+                  </button>
                 </div>
-
-                <div className="radar-data">
-                  <div className="radar-status">
-                    <span>{radarStatus}</span>
-                    <strong>{radarTopic}</strong>
+              ) : signalNodes.length === 0 ? (
+                <div className="live-signal-state waiting">
+                  <span className="live-signal-orb">
+                    <Users size={25} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <span>Редкая волна</span>
+                    <strong>Похожих сигналов пока нет</strong>
+                    <p>Твоя комната уже открыта. Можно подождать собеседника или попробовать новую формулировку мысли.</p>
                   </div>
-
-                  <div className="radar-stats">
-                    <span>
-                      <Users size={14} aria-hidden="true" />
-                      {radarMatches.length} рядом
-                    </span>
-                    <span>
-                      <Gem size={14} aria-hidden="true" />
-                      +{rewardXp} XP
-                    </span>
-                  </div>
-
-                  <div className="radar-matches">
-                    {radarMatches.map((match) => (
-                      <span className="radar-match-chip" key={match.id}>
-                        <i style={{ background: match.user.hue }} />
-                        {match.state}
+                  <button type="button" onClick={() => setActiveTab(activeRoomId ? 'room' : 'home')}>
+                    <Target size={16} aria-hidden="true" />
+                    {activeRoomId ? 'Вернуться в комнату' : 'Изменить сигнал'}
+                  </button>
+                </div>
+              ) : (
+                <div className="signal-map-art" aria-label="Подходящие сигналы">
+                  {signalNodes.map((match, index) => (
+                    <button
+                      className={`signal-node node-${index}`}
+                      key={match.id}
+                      type="button"
+                      onClick={() => activeRoomId ? setActiveTab('room') : openDemoRoom(match)}
+                      style={{
+                        borderColor: match.user.hue,
+                        boxShadow: `0 0 42px ${match.user.hue}66`,
+                      }}
+                    >
+                      <b style={{ background: match.user.hue }}>
+                        {match.user.alias.slice(0, 1).toLocaleUpperCase('ru-RU')}
+                      </b>
+                      <em>{match.state}</em>
+                      <small>{match.score}</small>
+                      <span className="signal-node-detail">
+                        {match.reasons[0] ?? `${match.minutesAgo} мин назад`}
                       </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="signal-map-art" aria-label="Подходящие сигналы">
-                <div className="signal-links">
-                  <i className="link-0" />
-                  <i className="link-1" />
-                  <i className="link-2" />
-                  <i className="link-3" />
-                </div>
-                <div className="signal-hub">
-                  <strong>{Math.min(signalNodes.length, 5)}</strong>
-                  <span>совпадения</span>
-                </div>
-                <div className="signal-specks">
-                  {Array.from({ length: 16 }).map((_, index) => (
-                    <i key={index} />
+                      <span className="signal-node-action">
+                        {activeRoomId ? 'К своей комнате' : 'Открыть демо'}
+                      </span>
+                    </button>
                   ))}
                 </div>
-                {signalNodes.map((match, index) => (
-                  <button
-                    className={`signal-node node-${index}`}
-                    key={match.id}
-                    type="button"
-                    onClick={() => openDemoRoom(match)}
-                    style={{
-                      borderColor: match.user.hue,
-                      boxShadow: `0 0 42px ${match.user.hue}66`,
-                    }}
-                  >
-                    <b style={{ background: match.user.hue }}>
-                      {match.user.alias.slice(0, 1).toLocaleUpperCase('ru-RU')}
-                    </b>
-                    <em>{match.state}</em>
-                    <small>{match.score}</small>
-                    <span className="signal-node-detail">
-                      {match.reasons[0] ?? `${match.minutesAgo} мин назад`}
-                    </span>
-                    <span className="signal-node-action">Войти</span>
-                  </button>
-                ))}
-              </div>
+              )}
             </div>
             )}
           </div>
@@ -1235,7 +1265,9 @@ function App() {
                 <p className="overline">Комната #{roomCode}</p>
                 <h2>{hasMatched ? 'Комната активна' : 'Комната ждет сигнал'}</h2>
               </div>
-              <span className="live-pill">Live</span>
+              <span className={`live-pill ${backendMode === 'live' && activeRoomId ? '' : 'demo'}`}>
+                {backendMode === 'live' && activeRoomId ? 'Live' : 'Demo'}
+              </span>
             </div>
 
             <div className="room-meta">

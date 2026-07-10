@@ -8,10 +8,11 @@
 ## Supabase
 
 1. Создай новый Supabase project.
-2. Открой `Authentication -> Sign In / Providers`.
-3. Включи `Anonymous Sign-Ins`.
-4. Открой `SQL Editor`.
-5. Выполни `supabase/migrations/20260703143000_initial_real_mvp.sql`.
+2. Открой `SQL Editor`.
+3. Выполни все файлы из `supabase/migrations` по имени, от старого к новому.
+4. Для режима Supabase anonymous auth дополнительно включи `Authentication -> Sign In / Providers -> Anonymous Sign-Ins` и задай `VITE_SUPABASE_USE_AUTH=true`.
+
+По умолчанию используется гостевой backend: браузер получает случайный UUID-токен, а все записи и чтение идут через ограниченные RPC с проверкой членства в комнате. Это позволяет показать друзьям приложение без регистрации и без включения anonymous auth.
 
 Миграция создает:
 
@@ -24,9 +25,10 @@
 - `reports`
 - `user_feedback`
 - `waitlist_entries`
-- RPC `create_room_for_checkin`
+- RPC для создания комнаты, сообщений, репортов, feedback и waitlist
 - RLS policies для anonymous-auth пользователей
-- Realtime publication для `messages`
+- закрытые RLS-таблицы и delta polling для гостевых комнат
+- Realtime publication для authenticated-комнат
 
 ## Env
 
@@ -35,6 +37,8 @@
 ```bash
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key_here
+# Только если нужен режим Supabase anonymous auth:
+VITE_SUPABASE_USE_AUTH=true
 ```
 
 Не добавляй service role key во frontend. Он нужен только для серверных админ-задач и модераторской панели.
@@ -55,7 +59,15 @@ npm run dev
 - Сообщение появляется в `messages` и приходит через Realtime.
 - Репорт создает запись в `reports` и `safety_events`.
 - Оценка после комнаты сохраняется в `user_feedback`.
-- Telegram handle записывается в `waitlist_entries`.
+- Telegram handle записывается в `guest_waitlist_entries` или `waitlist_entries` в зависимости от режима сессии.
+
+Автоматическая проверка двух независимых гостей:
+
+```bash
+npm run smoke:live -- https://your-public-url.example/
+```
+
+Тест создает два временных чек-ина, проверяет общий номер комнаты, обновление состава и доставку сообщения получателю.
 
 ## Следующий production-шаг
 

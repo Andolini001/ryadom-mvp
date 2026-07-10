@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "smoke:live": "node scripts/smoke-live.mjs",
     "smoke:public": "node scripts/smoke-public.mjs",
     "smoke:ui": "node scripts/smoke-ui.mjs",
     "preview": "vite preview"

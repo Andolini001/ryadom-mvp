@@ -1610,6 +1610,11 @@ small {
   text-transform: uppercase;
 }
 
+.live-pill.demo {
+  color: var(--gold);
+  background: rgba(246, 208, 152, 0.12);
+}
+
 .room-meta {
   justify-content: space-between;
   gap: 10px;
@@ -3808,6 +3813,88 @@ textarea:focus {
     0 18px 54px rgba(0, 0, 0, 0.2);
 }
 
+.live-signal-state {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 260px;
+  padding: clamp(22px, 4vw, 42px);
+  color: rgba(247, 242, 231, 0.78);
+  background:
+    linear-gradient(145deg, rgba(141, 233, 222, 0.1), rgba(246, 208, 152, 0.06)),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(223, 233, 208, 0.18);
+  border-radius: 24px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 18px 54px rgba(0, 0, 0, 0.18);
+}
+
+.live-signal-state.waiting {
+  background:
+    linear-gradient(145deg, rgba(246, 208, 152, 0.11), rgba(140, 106, 158, 0.07)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.live-signal-orb {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  color: #34362f;
+  background: var(--cream-button);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 24px;
+  box-shadow:
+    0 0 0 9px rgba(141, 233, 222, 0.06),
+    0 20px 48px rgba(141, 233, 222, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.live-signal-state > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.live-signal-state > div > span {
+  color: var(--mint);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.live-signal-state strong {
+  color: var(--text);
+  font-size: clamp(22px, 3vw, 32px);
+  line-height: 1.05;
+}
+
+.live-signal-state p {
+  max-width: 540px;
+  margin: 0;
+  color: rgba(247, 242, 231, 0.62);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.live-signal-state button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  color: #34362f;
+  background: var(--cream-button);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .tab-signals .signal-node {
   position: relative;
   inset: auto;
@@ -3903,6 +3990,24 @@ textarea:focus {
   .tab-signals .signal-map-art {
     grid-template-columns: 1fr;
     padding: 10px;
+  }
+
+  .live-signal-state {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    justify-items: start;
+    min-height: 300px;
+    padding: 20px;
+  }
+
+  .live-signal-orb {
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
+  }
+
+  .live-signal-state button {
+    width: 100%;
   }
 
   .tab-home h1 {

@@ -39,6 +39,7 @@ export type MatchCandidate = CheckIn & {
 
 export type Message = {
   id: string
+  authorId?: string
   author: string
   body: string
   time: string

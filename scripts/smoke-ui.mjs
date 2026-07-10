@@ -206,6 +206,9 @@ const runSmoke = async () => {
     assert(currentTab === 'Главная', `Expected home tab, got "${currentTab}".`)
     assert(await page.locator('.tab-home .signal-world').count() === 0, 'Signal map leaked onto home tab.')
 
+    const backendLabel = await visibleText(page.locator('.backend-strip strong'))
+    const isLiveBackend = backendLabel === 'Живой backend'
+
     const homeTitle = await visibleText(page.locator('.stage-copy h1'))
     assert(homeTitle === 'Что сейчас внутри?', `Unexpected home title: "${homeTitle}".`)
 
@@ -225,12 +228,24 @@ const runSmoke = async () => {
     )
 
     await page.getByRole('button', { name: 'Сигналы' }).click()
-    await page.waitForSelector('.tab-signals .signal-node')
-    assert(await page.locator('.tab-signals .signal-node').count() >= 3, 'Signals tab should show at least three readable signal cards.')
     assert(await page.locator('.tab-signals .match-radar:visible').count() === 0, 'Old radar widget should stay hidden on signals tab.')
     assert(await page.locator('.tab-signals .signal-hub:visible').count() === 0, 'Old central signal hub should stay hidden.')
 
-    await page.locator('.tab-signals .signal-node').first().click()
+    if (isLiveBackend) {
+      await page.waitForSelector('.tab-signals .live-signal-state')
+      assert(await page.locator('.tab-signals .signal-node').count() === 0, 'Live mode must not present demo people as real signals.')
+      assert(
+        (await visibleText(page.locator('.live-signal-state strong'))) === 'Сначала отправь свою мысль',
+        'Live signals tab should explain the real first step.',
+      )
+      await page.getByRole('button', { name: 'Создать сигнал' }).click()
+      await page.getByRole('button', { name: 'Найти своих' }).click()
+    } else {
+      await page.waitForSelector('.tab-signals .signal-node')
+      assert(await page.locator('.tab-signals .signal-node').count() >= 3, 'Demo mode should show at least three readable practice signals.')
+      await page.locator('.tab-signals .signal-node').first().click()
+    }
+
     await page.waitForSelector('.tab-room .room-console')
 
     const roomTitle = await visibleText(page.locator('.room-console h2').first())
@@ -254,14 +269,15 @@ const runSmoke = async () => {
     const initialPulse = Number.parseInt(await visibleText(page.locator('.room-pulse-ring span')), 10)
     assert(initialPulse >= 30 && initialPulse < 100, `Unexpected initial room pulse: ${initialPulse}.`)
 
-    for (let index = 0; index < 3; index += 1) {
+    const turnsToComplete = isLiveBackend ? 6 : 3
+    for (let index = 0; index < turnsToComplete; index += 1) {
       await page.getByRole('button', { name: 'Следующий ход' }).click()
       await page.waitForFunction(() => {
         const input = document.querySelector('.message-form input')
         return input instanceof HTMLInputElement && input.value.trim().length > 0
       })
       await page.getByRole('button', { name: 'Отправить сообщение' }).click()
-      await page.waitForTimeout(1_050)
+      await page.waitForTimeout(isLiveBackend ? 180 : 1_050)
     }
 
     await page.waitForFunction(() => {
@@ -294,12 +310,17 @@ const runSmoke = async () => {
     await checkNoMobileNavOverlap(page)
 
     await page.getByRole('button', { name: 'Сигналы' }).click()
-    await page.waitForSelector('.tab-signals .signal-node')
-    await page.locator('.tab-signals .signal-node').first().click()
-    await page.waitForSelector('.tab-room .room-pulse-card')
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await checkNoHorizontalOverflow(page, 'Mobile room')
-    await checkNoMobileRoomControlOverlap(page)
+    if (isLiveBackend) {
+      await page.waitForSelector('.tab-signals .live-signal-state')
+      await checkNoHorizontalOverflow(page, 'Mobile live signals')
+    } else {
+      await page.waitForSelector('.tab-signals .signal-node')
+      await page.locator('.tab-signals .signal-node').first().click()
+      await page.waitForSelector('.tab-room .room-pulse-card')
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await checkNoHorizontalOverflow(page, 'Mobile room')
+      await checkNoMobileRoomControlOverlap(page)
+    }
 
     assert(runtimeIssues.length === 0, `Runtime issues found:\n${runtimeIssues.join('\n')}`)
   } finally {
