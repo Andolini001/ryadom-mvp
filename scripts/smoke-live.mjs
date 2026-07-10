@@ -26,6 +26,9 @@ for (const [label, page] of [['A', pageA], ['B', pageB]]) {
 
 const marker = Date.now().toString().slice(-7)
 const liveMessage = `Проверка живого диалога ${marker}`
+const liveReply = `Ответ второй стороны ${marker}`
+const liveContinuationA = `Продолжение мысли альфа ${marker}`
+const liveContinuationB = `Продолжение мысли бета ${marker}`
 
 const enterLiveRoom = async (page, suffix) => {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
@@ -69,9 +72,31 @@ try {
   const remoteMessage = pageA.locator('.chat-message').filter({ hasText: liveMessage })
   assert((await ownMessage.locator('strong').innerText()).trim() === 'вы', 'Sender should see their own message as "вы".')
   assert((await remoteMessage.locator('strong').innerText()).trim() !== 'вы', 'Receiver should see the sender alias.')
+
+  await pageA.locator('.message-form input').fill(liveReply)
+  await pageA.getByRole('button', { name: 'Отправить сообщение' }).click()
+  await pageB.waitForFunction(
+    (expected) => [...document.querySelectorAll('.chat-message p')].some((node) => node.textContent?.includes(expected)),
+    liveReply,
+    { timeout: 8_000 },
+  )
+  await Promise.all([
+    pageA.waitForSelector('.mirror-card.unlocked', { timeout: 8_000 }),
+    pageB.waitForSelector('.mirror-card.unlocked', { timeout: 8_000 }),
+  ])
+
+  await pageA.locator('.message-form input').fill(liveContinuationA)
+  await pageA.getByRole('button', { name: 'Отправить сообщение' }).click()
+  await pageB.locator('.message-form input').fill(liveContinuationB)
+  await pageB.getByRole('button', { name: 'Отправить сообщение' }).click()
+  await Promise.all([
+    pageA.waitForSelector('.resonance-journey.trace-ready', { timeout: 8_000 }),
+    pageB.waitForSelector('.resonance-journey.trace-ready', { timeout: 8_000 }),
+  ])
+
   assert(runtimeIssues.length === 0, `Runtime issues found:\n${runtimeIssues.join('\n')}`)
 
-  console.log(`Live two-user smoke passed: ${baseUrl} (${roomA})`)
+  console.log(`Live mirror and trace smoke passed: ${baseUrl} (${roomA})`)
 } finally {
   await contextA.close()
   await contextB.close()
