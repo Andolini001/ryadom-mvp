@@ -149,6 +149,33 @@ const checkNoMobileNavOverlap = async (page) => {
   assert(overlap.length === 0, `Mobile nav overlaps important home controls: ${JSON.stringify(overlap)}`)
 }
 
+const checkNoMobileRoomControlOverlap = async (page) => {
+  const overlap = await page.evaluate(() => {
+    const nav = document.querySelector('.mobile-nav')
+    const nextMove = document.querySelector('.round-action-row button')
+    if (!(nav instanceof HTMLElement) || !(nextMove instanceof HTMLElement)) return null
+
+    const navRect = nav.getBoundingClientRect()
+    const controlRect = nextMove.getBoundingClientRect()
+    const intersects =
+      controlRect.bottom > navRect.top + 2 &&
+      controlRect.top < navRect.bottom - 2 &&
+      controlRect.right > navRect.left + 2 &&
+      controlRect.left < navRect.right - 2
+
+    return intersects
+      ? {
+          controlTop: Math.round(controlRect.top),
+          controlBottom: Math.round(controlRect.bottom),
+          navTop: Math.round(navRect.top),
+          navBottom: Math.round(navRect.bottom),
+        }
+      : null
+  })
+
+  assert(!overlap, `Mobile nav overlaps the room's next-move control: ${JSON.stringify(overlap)}`)
+}
+
 const runSmoke = async () => {
   if (!explicitUrl) {
     const port = configuredPort ?? (await findFreePort())
@@ -209,6 +236,24 @@ const runSmoke = async () => {
     const roomTitle = await visibleText(page.locator('.room-console h2').first())
     assert(roomTitle === 'Комната активна', `Expected active room, got "${roomTitle}".`)
 
+    const roomLayout = await page.evaluate(() => {
+      const grid = document.querySelector('.tab-room .hero-grid')
+      const room = document.querySelector('.tab-room .room-console')
+      if (!(grid instanceof HTMLElement) || !(room instanceof HTMLElement)) return null
+      return {
+        gridWidth: Math.round(grid.getBoundingClientRect().width),
+        roomWidth: Math.round(room.getBoundingClientRect().width),
+      }
+    })
+    assert(roomLayout, 'Room layout could not be measured.')
+    assert(
+      roomLayout.roomWidth >= roomLayout.gridWidth * 0.9,
+      `Desktop room should use the available width: ${JSON.stringify(roomLayout)}`,
+    )
+
+    const initialPulse = Number.parseInt(await visibleText(page.locator('.room-pulse-ring span')), 10)
+    assert(initialPulse >= 30 && initialPulse < 100, `Unexpected initial room pulse: ${initialPulse}.`)
+
     for (let index = 0; index < 3; index += 1) {
       await page.getByRole('button', { name: 'Следующий ход' }).click()
       await page.waitForFunction(() => {
@@ -227,6 +272,11 @@ const runSmoke = async () => {
     const finalLabel = await visibleText(page.locator('.room-close-head strong'))
     assert(finalLabel === 'Инсайт собран', `Expected completed room summary, got "${finalLabel}".`)
 
+    const finalPulse = Number.parseInt(await visibleText(page.locator('.room-pulse-ring span')), 10)
+    const pulseLabel = await visibleText(page.locator('.room-pulse-copy strong'))
+    assert(finalPulse > initialPulse, `Room pulse did not grow: ${initialPulse} -> ${finalPulse}.`)
+    assert(pulseLabel === 'мысль собрана', `Unexpected completed pulse label: "${pulseLabel}".`)
+
     await page.getByRole('button', { name: 'Сохранить след' }).click()
     await page.waitForFunction(() => document.body.textContent?.includes('След сохранен'))
 
@@ -242,6 +292,14 @@ const runSmoke = async () => {
     assert(await page.locator('.tab-home .signal-world').count() === 0, 'Signal map leaked onto mobile home tab.')
     await checkNoHorizontalOverflow(page, 'Mobile')
     await checkNoMobileNavOverlap(page)
+
+    await page.getByRole('button', { name: 'Сигналы' }).click()
+    await page.waitForSelector('.tab-signals .signal-node')
+    await page.locator('.tab-signals .signal-node').first().click()
+    await page.waitForSelector('.tab-room .room-pulse-card')
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await checkNoHorizontalOverflow(page, 'Mobile room')
+    await checkNoMobileRoomControlOverlap(page)
 
     assert(runtimeIssues.length === 0, `Runtime issues found:\n${runtimeIssues.join('\n')}`)
   } finally {

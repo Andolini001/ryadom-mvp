@@ -426,6 +426,27 @@ function App() {
     : 'откроется после матча'
   const totalRoundXp = roomRounds.reduce((sum, round) => sum + round.xp, 0)
   const roomComplete = hasMatched && completedRoundCount === roomRounds.length
+  const roomPulse = hasMatched
+    ? Math.min(
+        100,
+        38 + roomRoundMessageCount * 8 + completedRoundCount * 7 + (selectedConversationCardId ? 6 : 0),
+      )
+    : 12
+  const roomCombo = hasMatched
+    ? Math.max(1, completedRoundCount + (selectedConversationCardId ? 1 : 0))
+    : 0
+  const roomPulseLabel = roomComplete
+    ? 'мысль собрана'
+    : roomPulse >= 76
+      ? 'глубокий резонанс'
+      : roomPulse >= 56
+        ? 'контакт найден'
+        : 'разговор набирает ход'
+  const roomNextGoal = roomComplete
+    ? 'Сохраните след разговора или найдите новую волну.'
+    : hasMatched
+      ? activeRound.prompt.trim()
+      : 'Выберите сигнал, чтобы открыть первую общую мысль.'
   const roomInsight = `${thoughtLenses[0] ?? 'наблюдение'} + ${radarTopic}: здесь есть мысль, которую стоит продолжить с похожими людьми.`
   const roomTraceReward = rewardXp + totalRoundXp
   const inviteWaveKey = thoughtLenses.find((lens) => lens in waveInviteTemplates) ?? 'наблюдение'
@@ -1228,6 +1249,9 @@ function App() {
               </span>
             </div>
 
+            <div className="room-board">
+              <section className="room-quest-column" aria-label="Маршрут комнаты">
+
             <div className="room-state">
               <Star size={18} aria-hidden="true" />
               <div>
@@ -1328,6 +1352,38 @@ function App() {
               </button>
             </div>
 
+              </section>
+
+              <section className="room-dialogue-column" aria-label="Диалог комнаты">
+                <div className={`room-pulse-card ${roomComplete ? 'complete' : ''}`} aria-live="polite">
+                  <div
+                    className="room-pulse-ring"
+                    style={{
+                      background: `conic-gradient(var(--mint) ${roomPulse}%, rgba(255, 255, 255, 0.08) ${roomPulse}% 100%)`,
+                    }}
+                    aria-label={`Пульс комнаты ${roomPulse} процентов`}
+                  >
+                    <span>{roomPulse}</span>
+                    <small>%</small>
+                  </div>
+                  <div className="room-pulse-copy">
+                    <span>
+                      <Radio size={14} aria-hidden="true" />
+                      Пульс комнаты
+                    </span>
+                    <strong>{roomPulseLabel}</strong>
+                    <p>{roomNextGoal}</p>
+                  </div>
+                  <div className="room-pulse-stats">
+                    <span>
+                      серия <b>×{roomCombo}</b>
+                    </span>
+                    <span>
+                      ход <b>{Math.min(roomRoundMessageCount + 1, roomRounds[roomRounds.length - 1].completeAt)}</b>
+                    </span>
+                  </div>
+                </div>
+
             <div className="member-strip" aria-label="Участники комнаты">
               {room.members.map((member) => (
                 <span className="member" key={member.id}>
@@ -1402,6 +1458,11 @@ function App() {
               </button>
             </form>
 
+              </section>
+            </div>
+
+            <div className="room-footer-grid">
+
             <div className={`room-close-card ${roomComplete ? 'ready' : 'locked'}`} aria-live="polite">
               <div className="room-close-head">
                 <span>
@@ -1451,6 +1512,7 @@ function App() {
                 <Ban size={16} aria-hidden="true" />
                 Блок
               </button>
+            </div>
             </div>
           </aside>
         </section>
