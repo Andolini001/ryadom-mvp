@@ -1,8 +1,11 @@
 import {
   AlertTriangle,
   Ban,
+  BookOpen,
+  CheckCircle2,
   Clock3,
   Flame,
+  GitFork,
   HeartHandshake,
   Home,
   Lock,
@@ -17,7 +20,7 @@ import {
   Sparkles,
   Star,
   Target,
-  Trophy,
+  Trash2,
   UserRoundCheck,
   Users,
 } from 'lucide-react'
@@ -87,6 +90,34 @@ const defaultThought =
 
 type TabId = 'home' | 'room' | 'signals' | 'missions' | 'safety'
 type BackendMode = 'demo' | 'connecting' | 'live' | 'error'
+
+type SavedTrace = {
+  id: string
+  roomId: string
+  roomCode: string
+  topic: string
+  text: string
+  createdAt: string
+}
+
+const traceStorageKey = 'ryadom-private-atlas-v1'
+
+const readSavedTraces = (): SavedTrace[] => {
+  try {
+    const saved = window.localStorage.getItem(traceStorageKey)
+    if (!saved) return []
+
+    const parsed: unknown = JSON.parse(saved)
+    return Array.isArray(parsed) ? (parsed as SavedTrace[]).slice(0, 24) : []
+  } catch {
+    return []
+  }
+}
+
+const shortenThought = (value: string, maxLength = 86) => {
+  const normalized = value.trim().replace(/\s+/g, ' ')
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1).trim()}…` : normalized
+}
 
 const backendModeLabels: Record<BackendMode, string> = {
   demo: 'Демо-режим',
@@ -295,7 +326,7 @@ const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
   { id: 'room', label: 'Комната', icon: MessageCircle },
   { id: 'signals', label: 'Совпадения', icon: Users },
-  { id: 'missions', label: 'Итоги', icon: Target },
+  { id: 'missions', label: 'Атлас', icon: BookOpen },
   { id: 'safety', label: 'Защита', icon: Shield },
 ] satisfies Array<{ id: TabId; label: string; icon: typeof Home }>
 
@@ -360,8 +391,9 @@ function App() {
   const [isMatching, setIsMatching] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [selectedConversationCardId, setSelectedConversationCardId] = useState<string | null>(null)
+  const [selectedTraceIndex, setSelectedTraceIndex] = useState(0)
+  const [savedTraces, setSavedTraces] = useState<SavedTrace[]>(readSavedTraces)
   const [typingMember, setTypingMember] = useState<string | null>(null)
-  const [rewardClaimed, setRewardClaimed] = useState(false)
   const messageInputRef = useRef<HTMLInputElement>(null)
   const demoReplyTimerRef = useRef<number | null>(null)
 
@@ -382,15 +414,12 @@ function App() {
   const roomMessages = room.messages.slice(-10)
   const meaningfulMessageCount = room.messages.filter((item) => item.tone !== 'system').length
   const roomRoundMessageCount = hasMatched ? meaningfulMessageCount : 0
-  const progressCount = Math.min(5, meaningfulMessageCount)
   const signalNodes = matches.slice(0, 5)
   const radarMatches = matches.slice(0, 3)
   const topMatchScore = radarMatches[0]?.score ?? 34
   const resonanceScore = Math.min(99, Math.max(28, topMatchScore + signal.topics.length * 3))
   const rewardXp = 40 + radarMatches.length * 8 + signal.topics.length * 9
   const radarTopic = signal.topics[0] ?? 'новая мысль'
-  const signalRarity =
-    resonanceScore >= 82 ? 'редкий резонанс' : resonanceScore >= 62 ? 'сильный сигнал' : 'мягкий старт'
   const thoughtLenses = signal.lenses.length > 0 ? signal.lenses.slice(0, 3) : ['наблюдение']
   const nextRoundIndex = roomRounds.findIndex((round) => roomRoundMessageCount < round.completeAt)
   const activeRoundIndex = nextRoundIndex === -1 ? roomRounds.length - 1 : nextRoundIndex
@@ -408,8 +437,17 @@ function App() {
       ? 'цепочка закрыта'
       : `${roundMovesLeft} ${roundMoveWord} до награды`
     : 'откроется после матча'
-  const totalRoundXp = roomRounds.reduce((sum, round) => sum + round.xp, 0)
-  const roomComplete = hasMatched && completedRoundCount === roomRounds.length
+  const conversationAuthors = new Set(
+    room.messages
+      .filter((item) => item.tone !== 'system')
+      .map((item) => item.authorId ?? item.author),
+  )
+  const peerMessage = room.messages.find(
+    (item) => item.tone !== 'system' && item.author !== 'вы' && item.authorId !== selfProfileId,
+  )
+  const mirrorUnlocked = hasMatched && meaningfulMessageCount >= 2 && conversationAuthors.size >= 2
+  const traceUnlocked = mirrorUnlocked && meaningfulMessageCount >= 4
+  const roomComplete = traceUnlocked
   const roomPulse = hasMatched
     ? Math.min(
         100,
@@ -431,8 +469,25 @@ function App() {
     : hasMatched
       ? activeRound.prompt.trim()
       : 'Выберите сигнал, чтобы открыть первую общую мысль.'
-  const roomInsight = `${thoughtLenses[0] ?? 'наблюдение'} + ${radarTopic}: здесь есть мысль, которую стоит продолжить с похожими людьми.`
-  const roomTraceReward = rewardXp + totalRoundXp
+  const mirrorCommonality = `Вас объединяет тема «${radarTopic}» и желание ${intentLabels[intent]}.`
+  const mirrorDifference = peerMessage
+    ? `Ты начал с «${shortenThought(thought)}», а собеседник — с «${shortenThought(peerMessage.body)}». Это одна тема, увиденная с разных сторон.`
+    : 'Совпадение уже видно по теме, но для второй стороны Зеркала нужен ответ другого участника.'
+  const mirrorQuestion = {
+    vent: 'Что тебе хотелось бы наконец сказать без необходимости выглядеть сильнее?',
+    similar: 'В какой точке ваши мысли совпадают, даже если обстоятельства разные?',
+    support: 'Какая поддержка сейчас действительно поможет, а какая будет лишней?',
+    distract: 'Какой неожиданный поворот мог бы сделать эту тему немного легче?',
+  }[intent]
+  const traceOptions = [
+    `Мы вошли с разными историями, но оба искали честный разговор вокруг темы «${radarTopic}».`,
+    'Иногда важнее не получить быстрый ответ, а встретить человека, который останется рядом с мыслью.',
+    `Разговор показал: тема «${radarTopic}» становится яснее, когда ее не нужно защищать или объяснять идеально.`,
+  ]
+  const roomInsight = traceOptions[selectedTraceIndex] ?? traceOptions[0]
+  const traceIsSaved = savedTraces.some(
+    (item) => item.roomId === room.id && item.text === roomInsight,
+  )
   const inviteWaveKey = thoughtLenses.find((lens) => lens in waveInviteTemplates) ?? 'наблюдение'
   const inviteWaveLabel = inviteWaveKey === 'наблюдение' ? 'редкая мысль' : inviteWaveKey
   const inviteUrl = useMemo(() => {
@@ -540,6 +595,14 @@ function App() {
     [],
   )
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(traceStorageKey, JSON.stringify(savedTraces.slice(0, 24)))
+    } catch {
+      // The room remains usable when private storage is unavailable.
+    }
+  }, [savedTraces])
+
   const clearDemoReply = () => {
     if (demoReplyTimerRef.current !== null) {
       window.clearTimeout(demoReplyTimerRef.current)
@@ -603,7 +666,7 @@ function App() {
           setActiveRoomId(result.room.id)
           setLiveMatches(result.candidates)
           setSelectedConversationCardId(null)
-          setRewardClaimed(false)
+          setSelectedTraceIndex(0)
           setHasMatched(true)
           setActiveTab('room')
           setBackendNotice('Комната создана в Supabase. Сообщения идут через живой backend.')
@@ -627,7 +690,7 @@ function App() {
     setActiveRoomId(null)
     setLiveMatches(null)
     setSelectedConversationCardId(null)
-    setRewardClaimed(false)
+    setSelectedTraceIndex(0)
     setHasMatched(true)
     setActiveTab('room')
     setIsMatching(false)
@@ -641,7 +704,7 @@ function App() {
     setIsMatching(false)
     clearDemoReply()
     setSelectedConversationCardId(null)
-    setRewardClaimed(false)
+    setSelectedTraceIndex(0)
     setHasMatched(true)
     setActiveTab('room')
   }
@@ -787,19 +850,25 @@ function App() {
   }
 
   const saveRoomTrace = () => {
-    if (!roomComplete) return
+    if (!traceUnlocked) return
 
-    const nextFeedback: UserFeedback = {
-      moodAfter: feedback.moodAfter ?? 'lighter',
-      note: feedback.note || `След комнаты #${roomCode}: ${roomInsight}`,
+    const trace: SavedTrace = {
+      id: `${room.id}-${Date.now()}`,
+      roomId: room.id,
+      roomCode,
+      topic: stateText.trim() || radarTopic,
+      text: roomInsight,
+      createdAt: new Intl.DateTimeFormat('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date()),
     }
 
-    setRewardClaimed(true)
-    updateFeedback(nextFeedback)
+    setSavedTraces((items) => [trace, ...items.filter((item) => item.roomId !== room.id)].slice(0, 24))
     setBackendNotice(
-      backendMode === 'live' && activeRoomId
-        ? 'След комнаты сохранен. Синхронизируем с live-сессией.'
-        : 'След комнаты сохранен локально. В live mode он уйдет в Supabase.',
+      'След сохранен в приватном Атласе на этом устройстве.',
     )
   }
 
@@ -813,7 +882,7 @@ function App() {
           text: shareText,
           url: inviteUrl,
         })
-        setInviteStatus('Приглашение отправлено. +25 XP за быстрый вход друга.')
+        setInviteStatus('Приглашение отправлено.')
         return
       }
 
@@ -1306,45 +1375,81 @@ function App() {
 
             <div className="room-footer-grid">
 
-            <div className={`room-close-card ${roomComplete ? 'ready' : 'locked'}`} aria-live="polite">
-              <div className="room-close-head">
-                <span>
-                  <ShieldCheck size={16} aria-hidden="true" />
-                  Финал комнаты
-                </span>
-                <strong>{roomComplete ? 'Инсайт собран' : `${completedRoundCount} / ${roomRounds.length} раунда`}</strong>
+            <section
+              className={`resonance-journey ${mirrorUnlocked ? 'mirror-ready' : ''} ${traceUnlocked ? 'trace-ready' : ''}`}
+              aria-label="Путь разговора"
+              aria-live="polite"
+            >
+              <div className="journey-head">
+                <div>
+                  <span>Совместное открытие</span>
+                  <strong>{traceUnlocked ? 'След готов' : mirrorUnlocked ? 'Зеркало открылось' : 'Зеркало собирается'}</strong>
+                </div>
+                <div className="journey-steps" aria-label="Этапы разговора">
+                  <span className="done"><CheckCircle2 size={14} aria-hidden="true" /> Искра</span>
+                  <span className={mirrorUnlocked ? 'done' : ''}><GitFork size={14} aria-hidden="true" /> Зеркало</span>
+                  <span className={traceUnlocked ? 'done' : ''}><BookOpen size={14} aria-hidden="true" /> След</span>
+                </div>
               </div>
 
-              <p>
-                {roomComplete
-                  ? roomInsight
-                  : 'Дойдите до третьего раунда, чтобы сохранить след разговора и открыть итоговую награду.'}
-              </p>
+              {!mirrorUnlocked ? (
+                <p className="journey-locked-copy">
+                  Зеркало появится, когда в разговоре прозвучат мысли хотя бы двух участников.
+                </p>
+              ) : (
+                <div className="mirror-card unlocked">
+                  <div>
+                    <span>Что совпало</span>
+                    <p>{mirrorCommonality}</p>
+                  </div>
+                  <div>
+                    <span>Где вы разные</span>
+                    <p>{mirrorDifference}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessage(mirrorQuestion)
+                      window.requestAnimationFrame(() => messageInputRef.current?.focus())
+                    }}
+                  >
+                    <Sparkles size={15} aria-hidden="true" />
+                    {mirrorQuestion}
+                  </button>
+                </div>
+              )}
 
-              <div className="room-close-stats">
-                <span>
-                  <Trophy size={14} aria-hidden="true" />
-                  +{roomTraceReward} XP
-                </span>
-                <span>
-                  <Users size={14} aria-hidden="true" />
-                  {room.members.length} рядом
-                </span>
-                <span>
-                  <Sparkles size={14} aria-hidden="true" />
-                  {signalRarity}
-                </span>
-              </div>
-
-              <div className="room-close-actions">
-                <button type="button" onClick={saveRoomTrace} disabled={!roomComplete || rewardClaimed}>
-                  {rewardClaimed ? 'След сохранен' : 'Сохранить след'}
-                </button>
-                <button type="button" onClick={() => setActiveTab('signals')}>
-                  Найти еще
-                </button>
-              </div>
-            </div>
+              {traceUnlocked && (
+                <div className="trace-builder">
+                  <div className="trace-builder-copy">
+                    <span>Выбери мысль, которую хочется унести</span>
+                    <small>Она сохранится только в твоём приватном Атласе.</small>
+                  </div>
+                  <div className="trace-options">
+                    {traceOptions.map((option, index) => (
+                      <button
+                        className={selectedTraceIndex === index ? 'selected' : ''}
+                        key={option}
+                        type="button"
+                        onClick={() => setSelectedTraceIndex(index)}
+                      >
+                        <i>{index + 1}</i>
+                        <span>{option}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="trace-actions">
+                    <button type="button" onClick={saveRoomTrace} disabled={traceIsSaved}>
+                      <BookOpen size={16} aria-hidden="true" />
+                      {traceIsSaved ? 'След сохранен' : 'Сохранить в Атлас'}
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('missions')}>
+                      Открыть Атлас
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
 
             <div className="room-actions">
               <button type="button" onClick={shareInvite}>
@@ -1414,25 +1519,50 @@ function App() {
           <div className="ops-panel" id="launch">
             <div className="panel-heading">
               <div>
-                <p className="overline">После разговора</p>
-                <h2>Как тебе было?</h2>
+                <p className="overline">Только для тебя</p>
+                <h2>Атлас мыслей</h2>
               </div>
-              <Trophy size={22} aria-hidden="true" />
+              <BookOpen size={22} aria-hidden="true" />
             </div>
 
-            <div className="progress-card">
-              <div>
-                <strong>Разговоров сегодня: {progressCount}</strong>
-                <span>Твоя оценка помогает улучшать подбор.</span>
+            <p className="atlas-intro">
+              Здесь остаются не переписки целиком, а мысли, которые родились между людьми и оказались важными для тебя.
+            </p>
+
+            {savedTraces.length === 0 ? (
+              <div className="atlas-empty">
+                <BookOpen size={24} aria-hidden="true" />
+                <div>
+                  <strong>Первый след появится после разговора</strong>
+                  <p>Дойди до Зеркала, выбери итоговую мысль и сохрани её сюда.</p>
+                </div>
+                <button type="button" onClick={() => setActiveTab('home')}>Начать разговор</button>
               </div>
-              <div className="progress-dots">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <i className={index < progressCount ? 'filled' : ''} key={index} />
+            ) : (
+              <div className="atlas-grid" aria-label="Сохраненные следы">
+                {savedTraces.map((trace) => (
+                  <article className="atlas-trace" key={trace.id}>
+                    <div>
+                      <span>Комната #{trace.roomCode}</span>
+                      <time>{trace.createdAt}</time>
+                    </div>
+                    <strong>{trace.topic}</strong>
+                    <p>{trace.text}</p>
+                    <button
+                      type="button"
+                      aria-label={`Удалить след ${trace.topic}`}
+                      title="Удалить след"
+                      onClick={() => setSavedTraces((items) => items.filter((item) => item.id !== trace.id))}
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </article>
                 ))}
               </div>
-            </div>
+            )}
 
-            <p className="feedback-prompt">Что изменилось после последней комнаты?</p>
+            <section className="atlas-feedback">
+            <p className="feedback-prompt">Как тебе последний разговор?</p>
             <div className="feedback-row" aria-label="Оценка разговора">
               {[
                 ['lighter', 'легче'],
@@ -1463,6 +1593,7 @@ function App() {
               onBlur={() => updateFeedback(feedback)}
               placeholder="Что было полезно или что стоит изменить?"
             />
+            </section>
           </div>
         </section>
 

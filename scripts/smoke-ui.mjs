@@ -288,30 +288,35 @@ const runSmoke = async () => {
       'Room should keep the chat and composer visible.',
     )
 
-    const turnsToComplete = isLiveBackend ? 6 : 3
-    for (let index = 0; index < turnsToComplete; index += 1) {
-      await page.locator('.message-form input').fill(`Проверочная мысль ${index + 1}: хочу продолжить этот разговор спокойно.`)
+    if (isLiveBackend) {
+      assert(await page.locator('.resonance-journey:visible').count() === 1, 'Live room should expose the shared journey.')
+      await page.locator('.side-nav button').filter({ hasText: 'Атлас' }).click()
+    } else {
+      await page.locator('.message-form input').fill('Мне важно понять, где наши мысли действительно совпадают.')
       await page.getByRole('button', { name: 'Отправить сообщение' }).click()
-      await page.waitForTimeout(isLiveBackend ? 180 : 1_050)
+      await page.waitForTimeout(1_050)
+      await page.waitForSelector('.mirror-card.unlocked:visible')
+
+      const mirrorLabel = await visibleText(page.locator('.journey-head strong'))
+      assert(mirrorLabel === 'Зеркало открылось', `Expected mirror, got "${mirrorLabel}".`)
+
+      await page.locator('.message-form input').fill('Кажется, эта общая тема звучит у нас по-разному, но ведет к одному вопросу.')
+      await page.getByRole('button', { name: 'Отправить сообщение' }).click()
+      await page.waitForTimeout(1_050)
+      await page.waitForSelector('.resonance-journey.trace-ready:visible')
+
+      const traceLabel = await visibleText(page.locator('.journey-head strong'))
+      assert(traceLabel === 'След готов', `Expected trace, got "${traceLabel}".`)
+
+      await page.getByRole('button', { name: 'Сохранить в Атлас' }).click()
+      await page.waitForFunction(() => document.body.textContent?.includes('След сохранен'))
+      await page.getByRole('button', { name: 'Открыть Атлас' }).click()
     }
 
-    await page.waitForSelector('.room-close-card.ready:visible')
-
-    const finalLabel = await visibleText(page.locator('.room-close-head strong'))
-    assert(finalLabel === 'Инсайт собран', `Expected completed room summary, got "${finalLabel}".`)
-
-    await page.getByRole('button', { name: 'Сохранить след' }).click()
-    await page.waitForFunction(() => document.body.textContent?.includes('След сохранен'))
-
-    await page.getByRole('button', { name: 'Найти еще' }).click()
-    await page.waitForSelector('.app-shell.tab-signals')
-
-    await checkNoHorizontalOverflow(page, 'Desktop')
-
-    await page.locator('.side-nav button').filter({ hasText: 'Итоги' }).click()
     await page.waitForSelector('.app-shell.tab-missions')
+    assert(await page.locator('.atlas-trace').count() === (isLiveBackend ? 0 : 1), 'Atlas trace count is unexpected.')
     assert(await page.locator('.waitlist-band').count() === 0, 'Obsolete waitlist should not appear in the live product.')
-    await checkNoHorizontalOverflow(page, 'Desktop missions')
+    await checkNoHorizontalOverflow(page, 'Desktop atlas')
 
     await page.locator('.side-nav button').filter({ hasText: 'Защита' }).click()
     await page.waitForSelector('.app-shell.tab-safety')
@@ -339,6 +344,10 @@ const runSmoke = async () => {
       await checkNoHorizontalOverflow(page, 'Mobile room')
       await checkNoMobileRoomControlOverlap(page)
     }
+
+    await page.locator('.mobile-nav button').filter({ hasText: 'Атлас' }).click()
+    await page.waitForSelector('.app-shell.tab-missions')
+    await checkNoHorizontalOverflow(page, 'Mobile atlas')
 
     await page.locator('.mobile-nav button').filter({ hasText: 'Защита' }).click()
     await page.waitForSelector('.app-shell.tab-safety')

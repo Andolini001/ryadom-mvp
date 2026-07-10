@@ -1034,50 +1034,183 @@ button {
   margin-top: 14px;
 }
 
-.room-close-card.locked {
-  display: none;
+.resonance-journey {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
-.room-close-card.ready {
-  padding: 16px;
-  border: 1px solid rgba(188, 225, 204, 0.22);
-  border-radius: 14px;
-  background: rgba(169, 211, 190, 0.08);
+.resonance-journey.mirror-ready {
+  border-color: rgba(188, 225, 204, 0.22);
+  background: rgba(169, 211, 190, 0.06);
 }
 
-.room-close-head,
-.room-close-actions,
-.room-close-stats {
+.journey-head {
   display: flex;
   align-items: center;
-  gap: 9px;
-}
-
-.room-close-head {
   justify-content: space-between;
+  gap: 18px;
 }
 
-.room-close-head span,
-.room-close-stats span {
+.journey-head > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.journey-head > div:first-child span,
+.trace-builder-copy > span {
+  color: rgba(247, 242, 231, 0.48);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.journey-head strong {
+  font-size: 18px;
+}
+
+.journey-steps {
+  display: flex;
+  gap: 7px;
+}
+
+.journey-steps span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: rgba(247, 242, 231, 0.62);
-  font-size: 11px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  color: rgba(247, 242, 231, 0.34);
+  font-size: 10px;
 }
 
-.room-close-card p {
-  color: rgba(247, 242, 231, 0.67);
+.journey-steps span.done {
+  color: #d8e8d8;
+  border-color: rgba(187, 223, 202, 0.2);
+  background: rgba(187, 223, 202, 0.07);
+}
+
+.journey-locked-copy {
+  margin: 14px 0 0;
+  color: rgba(247, 242, 231, 0.5);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mirror-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 15px;
+}
+
+.mirror-card > div {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(5, 8, 8, 0.18);
+}
+
+.mirror-card > div span {
+  color: #cfe2d2;
+  font-size: 10px;
+  font-weight: 740;
+  text-transform: uppercase;
+}
+
+.mirror-card p {
+  margin: 7px 0 0;
+  color: rgba(247, 242, 231, 0.68);
+  font-size: 12px;
   line-height: 1.55;
 }
 
-.room-close-actions {
+.mirror-card > button {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid rgba(218, 232, 214, 0.16);
+  border-radius: 12px;
+  color: rgba(247, 242, 231, 0.82);
+  background: rgba(218, 232, 214, 0.07);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trace-builder {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trace-builder-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.trace-builder-copy small {
+  color: rgba(247, 242, 231, 0.46);
+}
+
+.trace-options {
+  display: grid;
+  gap: 7px;
   margin-top: 12px;
 }
 
-.room-close-actions button,
+.trace-options button {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 9px;
+  align-items: start;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(247, 242, 231, 0.6);
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trace-options button i {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: rgba(247, 242, 231, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.trace-options button span {
+  line-height: 1.45;
+}
+
+.trace-options button.selected {
+  color: var(--text);
+  border-color: rgba(208, 231, 214, 0.3);
+  background: rgba(208, 231, 214, 0.08);
+}
+
+.trace-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.trace-actions button,
 .room-actions button,
 .room-safety-menu summary,
+.atlas-empty button,
 .feedback-row button {
   min-height: 40px;
   padding: 0 14px;
@@ -1089,7 +1222,8 @@ button {
   cursor: pointer;
 }
 
-.room-close-actions button:first-child {
+.trace-actions button:first-child,
+.atlas-empty button {
   color: #17201d;
   background: #dce8d7;
 }
@@ -1154,47 +1288,111 @@ button {
   text-align: right;
 }
 
-/* Outcomes and safety */
+/* Atlas and safety */
 .ops-panel {
   max-width: 860px;
   margin: 0 auto;
   padding: 42px 46px;
 }
 
-.progress-card {
-  margin-top: 26px;
+.atlas-intro {
+  max-width: 650px;
+  margin: 16px 0 0;
+  color: rgba(247, 242, 231, 0.58);
+  line-height: 1.6;
+}
+
+.atlas-empty {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 24px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.025);
 }
 
-.progress-card > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+.atlas-empty > svg {
+  color: #cfe2d2;
 }
 
-.progress-card span {
+.atlas-empty > div {
+  display: grid;
+  gap: 5px;
+}
+
+.atlas-empty p {
+  margin: 0;
   color: rgba(247, 242, 231, 0.48);
   font-size: 12px;
 }
 
-.progress-dots {
+.atlas-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  margin-top: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
 }
 
-.progress-dots i {
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.09);
+.atlas-trace {
+  position: relative;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 17px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(220, 235, 216, 0.08), transparent 60%),
+    rgba(255, 255, 255, 0.025);
 }
 
-.progress-dots i.filled {
-  background: linear-gradient(90deg, #dcebd8, #f0d5a2);
+.atlas-trace > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(247, 242, 231, 0.38);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.atlas-trace > strong {
+  margin-top: 22px;
+  font-size: 14px;
+}
+
+.atlas-trace > p {
+  margin: 9px 30px 0 0;
+  color: rgba(247, 242, 231, 0.64);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.atlas-trace > button {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: rgba(247, 242, 231, 0.36);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.atlas-trace > button:hover {
+  color: #ff9f8d;
+}
+
+.atlas-feedback {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .feedback-row {
@@ -1509,14 +1707,63 @@ button {
     justify-content: center;
   }
 
+  .resonance-journey {
+    padding: 14px;
+  }
+
+  .journey-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .journey-steps {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .journey-steps span {
+    justify-content: center;
+    padding: 0 5px;
+  }
+
+  .mirror-card {
+    grid-template-columns: 1fr;
+  }
+
+  .mirror-card > button {
+    grid-column: auto;
+    min-height: 50px;
+  }
+
+  .trace-actions {
+    display: grid;
+  }
+
+  .trace-actions button {
+    min-height: 44px;
+  }
+
   .ops-panel {
     padding: 24px 17px;
   }
 
-  .progress-card > div:first-child,
+  .atlas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-empty,
   .safety-boundary {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .atlas-empty {
+    display: flex;
+  }
+
+  .atlas-empty button {
+    width: 100%;
   }
 
   .safety-boundary button {
