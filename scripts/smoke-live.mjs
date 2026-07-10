@@ -31,7 +31,7 @@ const enterLiveRoom = async (page, suffix) => {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
   await page.waitForSelector('.app-shell')
   await page.waitForFunction(
-    () => document.querySelector('.backend-strip strong')?.textContent?.includes('Живой backend'),
+    () => document.querySelector('.backend-strip strong')?.textContent?.includes('Люди онлайн'),
     null,
     { timeout: 15_000 },
   )

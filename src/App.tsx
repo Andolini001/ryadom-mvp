@@ -1,10 +1,8 @@
 import {
   AlertTriangle,
   Ban,
-  Bell,
   Clock3,
   Flame,
-  Gem,
   HeartHandshake,
   Home,
   Lock,
@@ -27,14 +25,12 @@ import './App.css'
 import {
   initialRoom,
   initialSafetyEvents,
-  intentDescriptions,
   intentLabels,
 } from './data'
 import {
   createProductionReport,
   createRoomFromSignal,
   ensureProductionSession,
-  joinProductionWaitlist,
   loadProductionSafetyEvents,
   saveProductionFeedback,
   sendProductionMessage,
@@ -94,22 +90,10 @@ const defaultThought =
 type TabId = 'home' | 'room' | 'signals' | 'missions' | 'safety'
 type BackendMode = 'demo' | 'connecting' | 'live' | 'error'
 
-const eventStatusLabels: Record<SafetyEvent['status'], string> = {
-  new: 'новое',
-  watching: 'в работе',
-  resolved: 'решено',
-}
-
-const severityLabels: Record<SafetyEvent['severity'], string> = {
-  low: 'низкий',
-  medium: 'средний',
-  high: 'высокий',
-}
-
 const backendModeLabels: Record<BackendMode, string> = {
   demo: 'Демо-режим',
   connecting: 'Подключение',
-  live: 'Живой backend',
+  live: 'Люди онлайн',
   error: 'Fallback',
 }
 
@@ -311,11 +295,11 @@ const buildDemoReply = (body: string, topics: string[]) => {
 
 const navItems = [
   { id: 'home', label: 'Главная', icon: Home },
-  { id: 'room', label: 'Комната', icon: MessageCircle, count: '3' },
+  { id: 'room', label: 'Комната', icon: MessageCircle },
   { id: 'signals', label: 'Сигналы', icon: Users },
-  { id: 'missions', label: 'Миссии', icon: Target, count: '2' },
+  { id: 'missions', label: 'Миссии', icon: Target },
   { id: 'safety', label: 'Защита', icon: Shield },
-] satisfies Array<{ id: TabId; label: string; icon: typeof Home; count?: string }>
+] satisfies Array<{ id: TabId; label: string; icon: typeof Home }>
 
 const buildRoom = (
   state: string,
@@ -361,10 +345,8 @@ function App() {
   const [room, setRoom] = useState<Room>(initialRoom)
   const [message, setMessage] = useState('')
   const [reports, setReports] = useState<Report[]>([])
-  const [safetyEvents, setSafetyEvents] = useState<SafetyEvent[]>(initialSafetyEvents)
+  const [, setSafetyEvents] = useState<SafetyEvent[]>(initialSafetyEvents)
   const [feedback, setFeedback] = useState<UserFeedback>({ moodAfter: null, note: '' })
-  const [telegramHandle, setTelegramHandle] = useState('')
-  const [waitlistStatus, setWaitlistStatus] = useState('')
   const [inviteStatus, setInviteStatus] = useState('')
   const [waveNotice, setWaveNotice] = useState('')
   const [backendMode, setBackendMode] = useState<BackendMode>(
@@ -400,33 +382,19 @@ function App() {
     signal.safetyLevel !== 'blocked' &&
     signal.safetyLevel !== 'crisis'
   const roomCode = room.id.match(/\d+/g)?.join('').slice(-3) || '348'
-  const activeRooms = matches.slice(0, 4)
   const roomMessages = room.messages.slice(-4)
   const meaningfulMessageCount = room.messages.filter((item) => item.tone !== 'system').length
   const roomRoundMessageCount = hasMatched ? meaningfulMessageCount : 0
-  const progressCount = Math.min(5, Math.max(1, meaningfulMessageCount))
-  const activeNavLabel = navItems.find((item) => item.id === activeTab)?.label ?? 'Главная'
+  const progressCount = Math.min(5, meaningfulMessageCount)
   const signalNodes = matches.slice(0, 5)
   const radarMatches = matches.slice(0, 3)
   const topMatchScore = radarMatches[0]?.score ?? 34
   const resonanceScore = Math.min(99, Math.max(28, topMatchScore + signal.topics.length * 3))
   const rewardXp = 40 + radarMatches.length * 8 + signal.topics.length * 9
   const radarTopic = signal.topics[0] ?? 'новая мысль'
-  const resonanceProgress = Math.min(
-    100,
-    (wordCount >= 1 && wordCount <= stateWordLimit ? 28 : 0) +
-      (thought.trim().length >= 18 ? 28 : 0) +
-      Math.min(signal.topics.length, 3) * 12 +
-      (radarMatches.length > 0 ? 8 : 0),
-  )
-  const topicChips = signal.topics.length > 0 ? signal.topics.slice(0, 4) : ['ищем тему']
-  const leadingMatch = radarMatches[0]
   const signalRarity =
     resonanceScore >= 82 ? 'редкий резонанс' : resonanceScore >= 62 ? 'сильный сигнал' : 'мягкий старт'
   const thoughtLenses = signal.lenses.length > 0 ? signal.lenses.slice(0, 3) : ['наблюдение']
-  const depthLabel =
-    signal.depthScore >= 82 ? 'глубокая мысль' : signal.depthScore >= 64 ? 'есть крючок' : 'мягкий вход'
-  const rewardLabel = rewardClaimed ? 'Награда собрана' : hasMatched ? 'Открыть награду' : 'Награда ждёт комнату'
   const nextRoundIndex = roomRounds.findIndex((round) => roomRoundMessageCount < round.completeAt)
   const activeRoundIndex = nextRoundIndex === -1 ? roomRounds.length - 1 : nextRoundIndex
   const activeRound = roomRounds[activeRoundIndex]
@@ -495,7 +463,7 @@ function App() {
         ? (incomingIntent as Intent)
         : template.intent,
     )
-    setWaveNotice(`Ты вошел в волну “${wave}”. Нажми “Найти своих”, чтобы попасть к похожим людям.`)
+    setWaveNotice(`Ты вошел в волну “${wave}”. Нажми “Найти собеседника”, чтобы попасть к похожим людям.`)
   }, [])
 
   useEffect(() => {
@@ -868,35 +836,8 @@ function App() {
     )
   }
 
-  const joinWaitlist = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const cleanHandle = telegramHandle.trim().replace(/^@/, '')
-
-    if (!cleanHandle) {
-      setWaitlistStatus('Добавь Telegram-ник, чтобы попасть в первую волну.')
-      return
-    }
-
-    if (backendMode === 'live') {
-      try {
-        await joinProductionWaitlist(cleanHandle)
-        setWaitlistStatus(`@${cleanHandle} сохранен в Supabase waitlist.`)
-        setBackendNotice('Waitlist-заявка записана в Supabase.')
-        return
-      } catch (error: unknown) {
-        setWaitlistStatus(
-          error instanceof Error
-            ? `Supabase не принял заявку: ${error.message}`
-            : 'Supabase не принял заявку, оставили локальный статус.',
-        )
-      }
-    }
-
-    setWaitlistStatus(`@${cleanHandle} добавлен в демо-очередь. Для MVP это уйдет в Telegram/CRM.`)
-  }
-
   const shareInvite = async () => {
-    const shareText = `Я нашел волну мыслей “${inviteWaveLabel}” в Рядом. Зайди и нажми “Найти своих” - возможно, попадем в похожую комнату.`
+    const shareText = `Я нашел волну мыслей “${inviteWaveLabel}” в Рядом. Зайди и нажми “Найти собеседника” - возможно, попадем в похожую комнату.`
 
     try {
       if (navigator.share) {
@@ -933,15 +874,6 @@ function App() {
           <span>Рядом</span>
         </button>
 
-        <div className="level-card">
-          <div>
-            <Star size={18} aria-hidden="true" />
-            <strong>Lv. 7</strong>
-          </div>
-          <span>780 / 1200 XP</span>
-          <i />
-        </div>
-
         <nav className="side-nav">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -955,43 +887,16 @@ function App() {
               >
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
-                {item.count && <em>{item.count}</em>}
               </button>
             )
           })}
         </nav>
 
-        <div className="mission-card">
-          <div>
-            <strong>Ежедневная миссия</strong>
-            <button type="button" aria-label="Скрыть миссию">
-              ×
-            </button>
-          </div>
-          <p>Проведи 1 комнату</p>
-          <span className="mission-progress">
-            <i style={{ width: hasMatched ? '100%' : '18%' }} />
-          </span>
-          <small>{hasMatched ? '1 / 1' : '0 / 1'} · +60 XP</small>
-        </div>
-
-        <div className="streak-card">
-          <strong>Серия чек-инов</strong>
-          <p>5 дней подряд</p>
-          <div>
-            {['Пн', 'Вт', 'Ср', 'Чт', 'Сб', 'Вс'].map((day, index) => (
-              <span className={index < 5 ? 'done' : ''} key={day}>
-                {day}
-              </span>
-            ))}
-          </div>
-        </div>
-
         <button className="rail-help" type="button" onClick={() => setActiveTab('safety')}>
-          <ShieldCheck size={24} aria-hidden="true" />
+          <ShieldCheck size={18} aria-hidden="true" />
           <span>
-            <strong>Ты не один</strong>
-            Если сейчас тяжело, мы рядом.
+            <strong>Безопасность</strong>
+            Анонимно и без давления
           </span>
         </button>
       </aside>
@@ -999,43 +904,36 @@ function App() {
       <section className="game-board">
         <header className="game-topbar">
           <div className={`backend-strip ${backendMode}`} role="status" aria-live="polite">
-            <strong>{backendModeLabels[backendMode]}</strong>
+            <i aria-hidden="true" />
+            <strong>{backendMode === 'live' ? 'Люди онлайн' : backendModeLabels[backendMode]}</strong>
             <span>{backendNotice}</span>
           </div>
 
-          <div className="resource-strip" aria-label="Ресурсы">
-            <span>
-              <Gem size={16} aria-hidden="true" />
-              210
-            </span>
-            <span>
-              <Flame size={16} aria-hidden="true" />
-              3
-            </span>
+          <div className="resource-strip" aria-label="Действия">
             <button type="button" onClick={shareInvite} aria-label="Поделиться Рядом" title="Поделиться Рядом">
               <Share2 size={17} aria-hidden="true" />
             </button>
-            <button type="button" onClick={() => setActiveTab('missions')} aria-label="Ранний доступ">
-              <Bell size={17} aria-hidden="true" />
-            </button>
           </div>
         </header>
-
-        <div className="active-tab-title" aria-live="polite">
-          <span>Текущая вкладка</span>
-          <strong>{activeNavLabel}</strong>
-        </div>
 
         <section className="hero-grid" id="check-in">
           <div className="signal-stage">
             {activeTab === 'home' && (
               <>
+            <div className="first-journey" aria-label="Как это работает">
+              <span className="active"><b>1</b> Мысль</span>
+              <i />
+              <span><b>2</b> Совпадение</span>
+              <i />
+              <span><b>3</b> Разговор</span>
+            </div>
+
             <div className="stage-copy">
-              <p className="quest-label">Чек-ин за 30 секунд</p>
-              <h1>Что сейчас внутри?</h1>
+              <p className="quest-label">Разговор без профилей и свайпов</p>
+              <h1>Найди человека, который думает похоже</h1>
               <p className="stage-subcopy">
-                Напиши короткий сигнал. Алгоритм найдет людей с похожим контекстом и откроет
-                спокойную комнату.
+                Опиши мысль своими словами. Мы найдем человека с близкой темой и сразу откроем
+                анонимный разговор.
               </p>
             </div>
 
@@ -1051,58 +949,32 @@ function App() {
               )}
 
               <label className="field">
-                <span>Состояние и мысли короткой фразой</span>
+                <span>О чем эта мысль?</span>
                 <input
                   value={stateText}
                   maxLength={72}
                   onChange={(event) => setStateText(event.target.value)}
-                  placeholder="например: устал, но хочу поговорить"
+                  placeholder="Например: выбор будущего"
                 />
                 <small className={wordCount > stateWordLimit ? 'field-error' : ''}>
-                  {wordCount || 0}/{stateWordLimit} слов. Лучше коротко и честно.
+                  Короткая тема, до {stateWordLimit} слов
                 </small>
               </label>
 
               <label className="field">
-                <span>Короткая мысль</span>
+                <span>Что именно тебя зацепило?</span>
                 <textarea
                   value={thought}
                   maxLength={420}
                   onChange={(event) => setThought(event.target.value)}
-                  placeholder="Опиши, что крутится в голове."
+                  placeholder="Раскрой мысль так, как рассказал бы близкому человеку..."
                 />
-                <small>{thought.length}/420 · исходный текст можно удалить после комнаты.</small>
+                <small>{thought.length}/420</small>
               </label>
 
-              <div className="resonance-profile" aria-live="polite">
-                <div className="resonance-core">
-                  <div>
-                    <span>{signalRarity} · {depthLabel}</span>
-                    <strong>{resonanceScore} резонанс · {signal.depthScore} глубина</strong>
-                  </div>
-                  <em>+{rewardXp} XP</em>
-                </div>
-
-                <div className="resonance-bar" aria-hidden="true">
-                  <i style={{ width: `${resonanceProgress}%` }} />
-                </div>
-
-                <div className="resonance-tags">
-                  {topicChips.map((topic) => (
-                    <span key={topic}>{topic}</span>
-                  ))}
-                </div>
-
-                <div className="resonance-next">
-                  <Sparkles size={15} aria-hidden="true" />
-                  <span>
-                    ДНК мысли: {thoughtLenses.join(' · ')}
-                    {leadingMatch ? ` · ближе всего ${leadingMatch.state}` : ''}
-                  </span>
-                </div>
-              </div>
-
-              <div className="intent-grid" aria-label="Выбор намерения">
+              <div className="intent-block">
+                <span>Какого разговора ты хочешь?</span>
+              <div className="intent-grid" aria-label="Выбор типа разговора">
                 {(Object.keys(intentLabels) as Intent[]).map((item) => {
                   const Icon = intentIcons[item]
 
@@ -1115,10 +987,16 @@ function App() {
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span>{intentLabels[item]}</span>
-                      <small>{intentDescriptions[item]}</small>
                     </button>
                   )
                 })}
+              </div>
+              </div>
+
+              <div className="trust-line" aria-label="Принципы сервиса">
+                <span><Lock size={14} aria-hidden="true" /> Анонимно</span>
+                <span>Без фото</span>
+                <span>18+</span>
               </div>
 
               <button
@@ -1128,7 +1006,7 @@ function App() {
                 disabled={!canMatch || isMatching}
               >
                 <Radio size={19} aria-hidden="true" />
-                {isMatching ? 'Создаем комнату...' : 'Найти своих'}
+                {isMatching ? 'Ищем совпадение...' : 'Найти собеседника'}
               </button>
 
               {isMatching && (
@@ -1142,14 +1020,14 @@ function App() {
                 </div>
               )}
 
-              <div className="spark-deck" aria-label="Искры для необычного чек-ина">
-                <div className="spark-deck-head">
+              <details className="spark-deck">
+                <summary className="spark-deck-head">
                   <span>
                     <Sparkles size={15} aria-hidden="true" />
-                    Колода искр
+                    Не знаешь, с чего начать?
                   </span>
-                  <small>выбери тему и получи бонус к совпадению</small>
-                </div>
+                  <small>Выбери готовую мысль</small>
+                </summary>
 
                 <div className="spark-grid">
                   {sparkDeck.map((spark) => (
@@ -1159,18 +1037,17 @@ function App() {
                       type="button"
                       onClick={() => applySpark(spark)}
                     >
-                      <span>{spark.rarity}</span>
                       <strong>{spark.state}</strong>
-                      <small>+{spark.xp} XP · {intentLabels[spark.intent]}</small>
+                      <small>{intentLabels[spark.intent]}</small>
                     </button>
                   ))}
                 </div>
-              </div>
+              </details>
 
-              <div className={`safety-note ${signal.safetyLevel}`}>
+              {signal.safetyLevel !== 'clear' && <div className={`safety-note ${signal.safetyLevel}`}>
                 <AlertTriangle size={18} aria-hidden="true" />
                 <span>{safetyCopy}</span>
-              </div>
+              </div>}
             </div>
               </>
             )}
@@ -1288,48 +1165,15 @@ function App() {
               <Star size={18} aria-hidden="true" />
               <div>
                 <strong>{room.title}</strong>
-                <span>{hasMatched ? 'сессия открыта' : 'найди своих, чтобы войти'}</span>
+                <span>{hasMatched ? `${room.members.length} рядом · ${activeRound.title}` : 'сначала создай сигнал'}</span>
               </div>
-            </div>
-
-            <div className={`reward-strip ${hasMatched ? 'unlocked' : 'locked'} ${rewardClaimed ? 'claimed' : ''}`}>
-              <div className="reward-orb">
-                <Trophy size={18} aria-hidden="true" />
-              </div>
-              <div>
-                <span>{rewardClaimed ? 'новый след' : hasMatched ? 'награда комнаты' : 'следующий шаг'}</span>
-                <strong>
-                  {rewardClaimed
-                    ? `+${rewardXp} XP · ${signalRarity}`
-                    : hasMatched
-                      ? `${radarMatches.length || 1} совпадения · ${resonanceScore} резонанс`
-                      : 'создай комнату и открой бонус'}
-                </strong>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRewardClaimed(true)}
-                disabled={!hasMatched || rewardClaimed}
-              >
-                {rewardLabel}
-              </button>
-            </div>
-
-            <div className="thought-lens-strip" aria-label="ДНК мысли комнаты">
-              <span>ДНК мысли</span>
-              <div>
-                {thoughtLenses.map((lens) => (
-                  <i key={lens}>{lens}</i>
-                ))}
-              </div>
-              <em>{signal.depthScore} глубина</em>
             </div>
 
             <div className={`round-strip ${hasMatched ? 'active' : 'locked'}`} aria-label="Раунды комнаты">
               <div className="round-strip-head">
                 <span>
                   <Flame size={15} aria-hidden="true" />
-                  Сессия рассуждения
+                  Текущий ход
                 </span>
                 <strong>{hasMatched ? activeRound.title : 'Раунды откроются после матча'}</strong>
                 <em>{roundProgress}%</em>
@@ -1364,24 +1208,9 @@ function App() {
                 <span>{roundStatusText}</span>
                 <button type="button" onClick={applyRoundPrompt} disabled={!hasMatched}>
                   <Target size={15} aria-hidden="true" />
-                  Следующий ход
+                  Подсказать вопрос
                 </button>
               </div>
-            </div>
-
-            <div className={`invite-strip ${inviteStatus ? 'copied' : ''}`}>
-              <div className="invite-orb">
-                <Share2 size={18} aria-hidden="true" />
-              </div>
-              <div>
-                <span>пригласить в волну</span>
-                <strong>{inviteWaveLabel} · +25 XP за быстрый вход</strong>
-                <p>Друг откроет похожую стартовую тему без твоего личного текста.</p>
-                {inviteStatus && <em>{inviteStatus}</em>}
-              </div>
-              <button type="button" onClick={shareInvite}>
-                Поделиться
-              </button>
             </div>
 
               </section>
@@ -1536,6 +1365,10 @@ function App() {
             </div>
 
             <div className="room-actions">
+              <button type="button" onClick={shareInvite}>
+                <Share2 size={16} aria-hidden="true" />
+                Пригласить
+              </button>
               <button type="button" onClick={() => addReport('Пожаловаться на сообщение')}>
                 <AlertTriangle size={16} aria-hidden="true" />
                 Пожаловаться
@@ -1545,57 +1378,46 @@ function App() {
                 Блок
               </button>
             </div>
+            {inviteStatus && <small className="invite-status">{inviteStatus}</small>}
             </div>
           </aside>
-        </section>
-
-        <section className="room-strip" aria-label="Активные комнаты">
-          <div className="strip-head">
-            <h2>Активные комнаты</h2>
-            <button type="button" onClick={() => setActiveTab('signals')}>сигналы</button>
-          </div>
-
-          <div className="room-cards">
-            {activeRooms.map((match, index) => (
-              <article className={index === 1 || hasMatched ? 'room-card active' : 'room-card'} key={match.id}>
-                <span className="avatar" style={{ background: match.user.hue }}>
-                  {match.user.alias.slice(0, 1).toLocaleUpperCase('ru-RU')}
-                </span>
-                <div>
-                  <strong>#{117 + index * 104} {match.state}</strong>
-                  <p>{match.thought}</p>
-                  <small>{Math.min(5, 2 + index)} / 5 · {match.minutesAgo} мин назад</small>
-                </div>
-                <button type="button" onClick={() => openDemoRoom(match)}>
-                  Войти
-                </button>
-              </article>
-            ))}
-          </div>
         </section>
 
         <section className="ops-grid" id="safety">
           <div className="ops-panel">
             <div className="panel-heading">
               <div>
-                <p className="overline">Очередь защиты</p>
-                <h2>Модерация</h2>
+                <p className="overline">Твоя безопасность</p>
+                <h2>Общайся спокойно</h2>
               </div>
-              <Lock size={20} aria-hidden="true" />
+              <ShieldCheck size={22} aria-hidden="true" />
             </div>
-            <div className="safety-table">
-              {safetyEvents.slice(0, 5).map((event) => (
-                <article className="safety-row" key={event.id}>
-                  <span className={`severity ${event.severity}`}>
-                    {severityLabels[event.severity]}
-                  </span>
-                  <div>
-                    <strong>{event.label}</strong>
-                    <p>{event.detail}</p>
-                  </div>
-                  <span>{eventStatusLabels[event.status]}</span>
-                </article>
-              ))}
+            <div className="safety-guide">
+              <article>
+                <Lock size={18} aria-hidden="true" />
+                <div>
+                  <strong>Минимум личных данных</strong>
+                  <p>Фото, настоящее имя и номер телефона не нужны для разговора.</p>
+                </div>
+              </article>
+              <article>
+                <Ban size={18} aria-hidden="true" />
+                <div>
+                  <strong>Контроль в один тап</strong>
+                  <p>В комнате всегда доступны блокировка и жалоба на участника.</p>
+                </div>
+              </article>
+              <article>
+                <HeartHandshake size={18} aria-hidden="true" />
+                <div>
+                  <strong>Тяжелые состояния не матчим</strong>
+                  <p>Кризисные фразы получают маршрут к срочной помощи, а не случайного собеседника.</p>
+                </div>
+              </article>
+            </div>
+            <div className="safety-boundary">
+              <span>Рядом — социальный сервис, не терапия и не экстренная помощь.</span>
+              <button type="button" onClick={() => setActiveTab('home')}>Вернуться к мысли</button>
             </div>
           </div>
 
@@ -1651,30 +1473,6 @@ function App() {
               placeholder="Что улучшить в подборе?"
             />
           </div>
-        </section>
-
-        <section className="waitlist-band" id="waitlist">
-          <div>
-            <p className="overline">Первая волна</p>
-            <h2>Игровые комнаты без ленты и лайков</h2>
-            <p>
-              Подключаем первых пользователей через Telegram, смотрим качество матчей и
-              открываем сезон постепенно.
-            </p>
-          </div>
-          <form className="waitlist-form" onSubmit={joinWaitlist}>
-            <input
-              value={telegramHandle}
-              onChange={(event) => setTelegramHandle(event.target.value)}
-              placeholder="@username"
-              aria-label="Telegram username"
-            />
-            <button type="submit">
-              <Rocket size={17} aria-hidden="true" />
-              В ранний доступ
-            </button>
-            {waitlistStatus && <small>{waitlistStatus}</small>}
-          </form>
         </section>
 
         {reports.length > 0 && (

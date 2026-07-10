@@ -152,28 +152,31 @@ const checkNoMobileNavOverlap = async (page) => {
 const checkNoMobileRoomControlOverlap = async (page) => {
   const overlap = await page.evaluate(() => {
     const nav = document.querySelector('.mobile-nav')
-    const nextMove = document.querySelector('.round-action-row button')
-    if (!(nav instanceof HTMLElement) || !(nextMove instanceof HTMLElement)) return null
+    const controls = [...document.querySelectorAll('.message-form, .round-action-row button')]
+    if (!(nav instanceof HTMLElement)) return []
 
     const navRect = nav.getBoundingClientRect()
-    const controlRect = nextMove.getBoundingClientRect()
-    const intersects =
-      controlRect.bottom > navRect.top + 2 &&
-      controlRect.top < navRect.bottom - 2 &&
-      controlRect.right > navRect.left + 2 &&
-      controlRect.left < navRect.right - 2
+    return controls.map((control) => {
+      const controlRect = control.getBoundingClientRect()
+      const intersects =
+        controlRect.bottom > navRect.top + 2 &&
+        controlRect.top < navRect.bottom - 2 &&
+        controlRect.right > navRect.left + 2 &&
+        controlRect.left < navRect.right - 2
 
-    return intersects
-      ? {
-          controlTop: Math.round(controlRect.top),
-          controlBottom: Math.round(controlRect.bottom),
-          navTop: Math.round(navRect.top),
-          navBottom: Math.round(navRect.bottom),
-        }
-      : null
+      return intersects
+        ? {
+            className: control.className,
+            controlTop: Math.round(controlRect.top),
+            controlBottom: Math.round(controlRect.bottom),
+            navTop: Math.round(navRect.top),
+            navBottom: Math.round(navRect.bottom),
+          }
+        : null
+    }).filter(Boolean)
   })
 
-  assert(!overlap, `Mobile nav overlaps the room's next-move control: ${JSON.stringify(overlap)}`)
+  assert(overlap.length === 0, `Mobile nav overlaps room controls: ${JSON.stringify(overlap)}`)
 }
 
 const runSmoke = async () => {
@@ -202,15 +205,25 @@ const runSmoke = async () => {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.app-shell')
 
-    const currentTab = await visibleText(page.locator('.active-tab-title strong'))
-    assert(currentTab === 'Главная', `Expected home tab, got "${currentTab}".`)
+    assert(await page.locator('.app-shell.tab-home').count() === 1, 'Expected the home tab to be active.')
     assert(await page.locator('.tab-home .signal-world').count() === 0, 'Signal map leaked onto home tab.')
 
     const backendLabel = await visibleText(page.locator('.backend-strip strong'))
-    const isLiveBackend = backendLabel === 'Живой backend'
+    const isLiveBackend = backendLabel === 'Люди онлайн'
 
     const homeTitle = await visibleText(page.locator('.stage-copy h1'))
-    assert(homeTitle === 'Что сейчас внутри?', `Unexpected home title: "${homeTitle}".`)
+    assert(
+      homeTitle === 'Найди человека, который думает похоже',
+      `Unexpected home title: "${homeTitle}".`,
+    )
+    assert(
+      await page.locator('.tab-home .primary-cta:visible').count() === 1,
+      'Home should have one visible primary action.',
+    )
+    assert(
+      await page.locator('.tab-home .level-card:visible, .tab-home .resonance-profile:visible, .tab-home .mission-card:visible').count() === 0,
+      'Legacy dashboard clutter leaked onto the first-use screen.',
+    )
 
     const homeFont = await page.locator('.stage-copy h1').evaluate((element) => {
       const style = window.getComputedStyle(element)
@@ -239,7 +252,7 @@ const runSmoke = async () => {
         'Live signals tab should explain the real first step.',
       )
       await page.getByRole('button', { name: 'Создать сигнал' }).click()
-      await page.getByRole('button', { name: 'Найти своих' }).click()
+      await page.getByRole('button', { name: 'Найти собеседника' }).click()
     } else {
       await page.waitForSelector('.tab-signals .signal-node')
       assert(await page.locator('.tab-signals .signal-node').count() >= 3, 'Demo mode should show at least three readable practice signals.')
@@ -271,7 +284,7 @@ const runSmoke = async () => {
 
     const turnsToComplete = isLiveBackend ? 6 : 3
     for (let index = 0; index < turnsToComplete; index += 1) {
-      await page.getByRole('button', { name: 'Следующий ход' }).click()
+      await page.getByRole('button', { name: 'Подсказать вопрос' }).click()
       await page.waitForFunction(() => {
         const input = document.querySelector('.message-form input')
         return input instanceof HTMLInputElement && input.value.trim().length > 0
@@ -297,9 +310,20 @@ const runSmoke = async () => {
     await page.waitForFunction(() => document.body.textContent?.includes('След сохранен'))
 
     await page.getByRole('button', { name: 'Найти еще' }).click()
-    await page.waitForFunction(() => document.querySelector('.active-tab-title strong')?.textContent === 'Сигналы')
+    await page.waitForSelector('.app-shell.tab-signals')
 
     await checkNoHorizontalOverflow(page, 'Desktop')
+
+    await page.locator('.side-nav button').filter({ hasText: 'Миссии' }).click()
+    await page.waitForSelector('.app-shell.tab-missions')
+    assert(await page.locator('.waitlist-band').count() === 0, 'Obsolete waitlist should not appear in the live product.')
+    await checkNoHorizontalOverflow(page, 'Desktop missions')
+
+    await page.locator('.side-nav button').filter({ hasText: 'Защита' }).click()
+    await page.waitForSelector('.app-shell.tab-safety')
+    assert(await page.getByText('Общайся спокойно').count() === 1, 'Safety tab should be user-facing.')
+    assert(await page.getByText('Модерация').count() === 0, 'Internal moderation queue leaked into the user UI.')
+    await checkNoHorizontalOverflow(page, 'Desktop safety')
 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
@@ -321,6 +345,10 @@ const runSmoke = async () => {
       await checkNoHorizontalOverflow(page, 'Mobile room')
       await checkNoMobileRoomControlOverlap(page)
     }
+
+    await page.locator('.mobile-nav button').filter({ hasText: 'Защита' }).click()
+    await page.waitForSelector('.app-shell.tab-safety')
+    await checkNoHorizontalOverflow(page, 'Mobile safety')
 
     assert(runtimeIssues.length === 0, `Runtime issues found:\n${runtimeIssues.join('\n')}`)
   } finally {
