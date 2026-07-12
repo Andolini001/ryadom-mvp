@@ -40,7 +40,7 @@ import {
 } from './lib/productionBackend'
 import { isSupabaseConfigured } from './lib/supabase'
 import { buildMoodSignal, findMatches } from './matching'
-import type { FormEvent } from 'react'
+import type { CSSProperties, FormEvent } from 'react'
 import type {
   Intent,
   MatchCandidate,
@@ -488,6 +488,46 @@ function App() {
   const traceIsSaved = savedTraces.some(
     (item) => item.roomId === room.id && item.text === roomInsight,
   )
+  const atlasCount = savedTraces.length
+  const expeditionProgress = Math.min(
+    100,
+    Math.round(
+      ((canMatch ? 1 : 0) + (hasMatched ? 1 : 0) + (mirrorUnlocked ? 1 : 0) + (traceIsSaved ? 1 : 0)) * 25,
+    ),
+  )
+  const expeditionRank = traceIsSaved
+    ? 'След сохранен'
+    : traceUnlocked
+      ? 'Артефакт найден'
+      : mirrorUnlocked
+        ? 'Зеркало открыто'
+        : hasMatched
+          ? 'Комната активна'
+          : canMatch
+            ? 'Сигнал готов'
+            : 'Начни с мысли'
+  const expeditionSteps = [
+    {
+      title: 'Сигнал',
+      caption: canMatch ? 'готов к поиску' : 'напиши тему и мысль',
+      complete: canMatch,
+    },
+    {
+      title: 'Совпадение',
+      caption: hasMatched ? 'комната открыта' : 'найди своих',
+      complete: hasMatched,
+    },
+    {
+      title: 'Зеркало',
+      caption: mirrorUnlocked ? 'появилась общая мысль' : 'нужны 2 голоса',
+      complete: mirrorUnlocked,
+    },
+    {
+      title: 'След',
+      caption: traceIsSaved ? 'в Атласе' : 'сохрани после разговора',
+      complete: traceIsSaved,
+    },
+  ]
   const inviteWaveKey = thoughtLenses.find((lens) => lens in waveInviteTemplates) ?? 'наблюдение'
   const inviteWaveLabel = inviteWaveKey === 'наблюдение' ? 'редкая мысль' : inviteWaveKey
   const inviteUrl = useMemo(() => {
@@ -594,6 +634,10 @@ function App() {
     },
     [],
   )
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [activeTab])
 
   useEffect(() => {
     try {
@@ -972,6 +1016,33 @@ function App() {
                 анонимный разговор.
               </p>
             </div>
+
+            <section className="expedition-panel" aria-label="Экспедиция мысли">
+              <div
+                className="expedition-orbit"
+                style={{ '--progress': `${expeditionProgress}%` } as CSSProperties}
+                aria-hidden="true"
+              >
+                <span>{expeditionProgress}</span>
+              </div>
+              <div className="expedition-copy">
+                <span>Режим экспедиции</span>
+                <strong>{expeditionRank}</strong>
+                <p>
+                  Один короткий сигнал запускает маршрут: найти похожего человека, открыть Зеркало
+                  и сохранить личный След в Атлас.
+                </p>
+              </div>
+              <div className="expedition-steps">
+                {expeditionSteps.map((step, index) => (
+                  <span className={step.complete ? 'complete' : ''} key={step.title}>
+                    <i>{index + 1}</i>
+                    <b>{step.title}</b>
+                    <small>{step.caption}</small>
+                  </span>
+                ))}
+              </div>
+            </section>
 
             <div className="checkin-panel">
               {waveNotice && (
@@ -1528,6 +1599,24 @@ function App() {
             <p className="atlas-intro">
               Здесь остаются не переписки целиком, а мысли, которые родились между людьми и оказались важными для тебя.
             </p>
+
+            <div className="atlas-stats" aria-label="Прогресс Атласа">
+              <article>
+                <span>Собрано</span>
+                <strong>{atlasCount}</strong>
+                <small>следов</small>
+              </article>
+              <article>
+                <span>Текущий ранг</span>
+                <strong>{atlasCount >= 8 ? 'Проводник' : atlasCount >= 3 ? 'Искатель' : 'Наблюдатель'}</strong>
+                <small>{atlasCount >= 3 ? 'коллекция оживает' : 'еще 3 следа до редкого ранга'}</small>
+              </article>
+              <article>
+                <span>Следующая редкость</span>
+                <strong>{atlasCount >= 8 ? 'Глубина' : atlasCount >= 3 ? 'Мост' : 'Первая серия'}</strong>
+                <small>{Math.max(0, (atlasCount >= 3 ? 8 : 3) - atlasCount)} до открытия</small>
+              </article>
+            </div>
 
             {savedTraces.length === 0 ? (
               <div className="atlas-empty">

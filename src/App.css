@@ -326,6 +326,122 @@ button {
   line-height: 1.6;
 }
 
+.expedition-panel {
+  max-width: 860px;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 18px 20px;
+  align-items: center;
+  margin-top: 28px;
+  padding: 18px;
+  border: 1px solid rgba(226, 241, 224, 0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(140deg, rgba(227, 239, 218, 0.12), rgba(255, 255, 255, 0.035)),
+    rgba(7, 11, 10, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.expedition-orbit {
+  width: 82px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(229, 240, 218, 0.22);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(238, 241, 221, 0.2) 0 36%, transparent 37%),
+    conic-gradient(#dfead7 var(--progress, 0), rgba(255, 255, 255, 0.08) 0);
+  box-shadow: 0 0 40px rgba(196, 221, 208, 0.12);
+}
+
+.expedition-orbit span {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #17201d;
+  background: linear-gradient(135deg, #f2f1dc, #c4ddd0);
+  font-size: 21px;
+  font-weight: 780;
+}
+
+.expedition-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.expedition-copy span,
+.expedition-steps small,
+.atlas-stats span,
+.atlas-stats small {
+  color: rgba(247, 242, 231, 0.48);
+  font-size: 10px;
+  font-weight: 720;
+  text-transform: uppercase;
+}
+
+.expedition-copy strong {
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.expedition-copy p {
+  max-width: 590px;
+  margin: 0;
+  color: rgba(247, 242, 231, 0.58);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.expedition-steps {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.expedition-steps span {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 2px 9px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.expedition-steps i {
+  grid-row: span 2;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: rgba(247, 242, 231, 0.46);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.expedition-steps b {
+  font-size: 12px;
+}
+
+.expedition-steps span.complete {
+  border-color: rgba(211, 232, 217, 0.28);
+  background: rgba(211, 232, 217, 0.08);
+}
+
+.expedition-steps span.complete i {
+  color: #17201d;
+  background: #dce8d7;
+}
+
 .checkin-panel {
   max-width: 760px;
   display: grid;
@@ -805,6 +921,243 @@ button {
 .round-strip,
 .room-pulse-card {
   display: none;
+}
+
+.active-room .round-strip {
+  display: grid;
+}
+
+.active-room .room-pulse-card {
+  display: grid;
+}
+
+.round-strip {
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid rgba(217, 234, 214, 0.16);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(224, 238, 217, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(5, 8, 8, 0.18);
+}
+
+.round-strip-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.round-strip-head span,
+.round-action-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d7e6d4;
+  font-size: 10px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.round-strip-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(247, 242, 231, 0.88);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.round-strip-head em {
+  width: 42px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #17201d;
+  background: #dce8d7;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 780;
+}
+
+.round-strip p {
+  margin: 0;
+  color: rgba(247, 242, 231, 0.56);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.round-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.round-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #e9ecd9, #77d1bc);
+}
+
+.round-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.round-step {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 1px 8px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  color: rgba(247, 242, 231, 0.44);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.round-step i {
+  grid-row: span 2;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.round-step b {
+  color: rgba(247, 242, 231, 0.76);
+  font-size: 11px;
+}
+
+.round-step small {
+  font-size: 9px;
+}
+
+.round-step.current,
+.round-step.done {
+  border-color: rgba(211, 232, 217, 0.24);
+  background: rgba(211, 232, 217, 0.07);
+}
+
+.round-step.done i {
+  color: #17201d;
+  background: #dce8d7;
+}
+
+.round-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.round-action-row button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(226, 241, 224, 0.16);
+  border-radius: 10px;
+  color: rgba(247, 242, 231, 0.76);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 11px;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.room-pulse-card {
+  grid-template-columns: 66px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid rgba(217, 234, 214, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.room-pulse-card.complete {
+  border-color: rgba(224, 238, 217, 0.28);
+  background: rgba(224, 238, 217, 0.08);
+}
+
+.room-pulse-ring {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.room-pulse-ring span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #17201d;
+  background: #e5ead8;
+  font-size: 18px;
+  font-weight: 780;
+}
+
+.room-pulse-ring small {
+  display: none;
+}
+
+.room-pulse-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.room-pulse-copy span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d7e6d4;
+  font-size: 10px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.room-pulse-copy strong {
+  font-size: 16px;
+}
+
+.room-pulse-copy p {
+  margin: 0;
+  color: rgba(247, 242, 231, 0.54);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.room-pulse-stats {
+  display: grid;
+  gap: 6px;
+}
+
+.room-pulse-stats span {
+  min-width: 70px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(247, 242, 231, 0.55);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 10px;
+  text-transform: uppercase;
 }
 
 .empty-room .room-dialogue-column,
@@ -1302,6 +1655,32 @@ button {
   line-height: 1.6;
 }
 
+.atlas-stats {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr 1.2fr;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.atlas-stats article {
+  min-height: 104px;
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(220, 235, 216, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.atlas-stats strong {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
 .atlas-empty {
   display: grid;
   grid-template-columns: 40px 1fr auto;
@@ -1564,25 +1943,61 @@ button {
   }
 
   .stage-copy h1 {
-    font-size: 31px;
+    font-size: 28px;
   }
 
   .stage-subcopy {
-    margin-top: 12px;
-    font-size: 14px;
+    display: none;
+  }
+
+  .expedition-panel {
+    grid-template-columns: 62px 1fr;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 13px;
+  }
+
+  .expedition-orbit {
+    width: 58px;
+  }
+
+  .expedition-orbit span {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .expedition-copy strong {
+    font-size: 17px;
+  }
+
+  .expedition-copy p {
+    display: none;
+  }
+
+  .expedition-steps {
+    display: none;
   }
 
   .checkin-panel {
-    gap: 12px;
-    margin-top: 18px;
+    gap: 10px;
+    margin-top: 14px;
   }
 
   .field input {
-    height: 50px;
+    height: 46px;
   }
 
   .field textarea {
-    min-height: 88px;
+    min-height: 70px;
+  }
+
+  .field {
+    gap: 6px;
+  }
+
+  .field small {
+    display: none;
   }
 
   .intent-grid {
@@ -1592,7 +2007,7 @@ button {
 
   .intent {
     justify-content: flex-start;
-    min-height: 44px;
+    min-height: 40px;
     padding: 0 12px;
     font-size: 11px;
   }
@@ -1654,6 +2069,77 @@ button {
 
   .room-state {
     padding: 12px;
+  }
+
+  .round-strip {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .round-strip-head {
+    grid-template-columns: 1fr auto;
+  }
+
+  .round-strip-head span {
+    grid-column: 1 / -1;
+  }
+
+  .round-strip p {
+    display: none;
+  }
+
+  .round-track {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .round-step {
+    min-height: 54px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 3px;
+    padding: 8px 5px;
+    text-align: center;
+  }
+
+  .round-step i {
+    grid-row: auto;
+    width: 22px;
+    height: 22px;
+  }
+
+  .round-step small {
+    display: none;
+  }
+
+  .round-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .round-action-row button {
+    justify-content: center;
+  }
+
+  .room-pulse-card {
+    grid-template-columns: 54px 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .room-pulse-ring {
+    width: 50px;
+    height: 50px;
+  }
+
+  .room-pulse-ring span {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  .room-pulse-stats {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .member-strip {
@@ -1749,6 +2235,10 @@ button {
   }
 
   .atlas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-stats {
     grid-template-columns: 1fr;
   }
 

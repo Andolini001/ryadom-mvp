@@ -306,8 +306,28 @@ const runSmoke = async () => {
     )
 
     assert(
-      await page.locator('.room-pulse-card:visible, .round-strip:visible').count() === 0,
-      'Hidden game mechanics should not compete with the conversation.',
+      await page.locator('.room-pulse-card:visible, .round-strip:visible').count() === 2,
+      'Room should expose the compact game route and pulse.',
+    )
+    const roomGameLayout = await page.evaluate(() => {
+      const pulse = document.querySelector('.room-pulse-card')
+      const chat = document.querySelector('.chat-window')
+      const strip = document.querySelector('.round-strip')
+      if (!(pulse instanceof HTMLElement) || !(chat instanceof HTMLElement) || !(strip instanceof HTMLElement)) return null
+      const pulseBox = pulse.getBoundingClientRect()
+      const chatBox = chat.getBoundingClientRect()
+      const stripBox = strip.getBoundingClientRect()
+      return {
+        pulseBottom: Math.round(pulseBox.bottom),
+        chatTop: Math.round(chatBox.top),
+        stripBottom: Math.round(stripBox.bottom),
+        pulseTop: Math.round(pulseBox.top),
+      }
+    })
+    assert(roomGameLayout, 'Room game route could not be measured.')
+    assert(
+      roomGameLayout.stripBottom <= roomGameLayout.pulseTop && roomGameLayout.pulseBottom <= roomGameLayout.chatTop,
+      `Room game route overlaps the chat: ${JSON.stringify(roomGameLayout)}`,
     )
     assert(
       await page.locator('.chat-window:visible, .message-form:visible').count() === 2,
